@@ -1,0 +1,14 @@
+# AI-DERS backend dependencies.
+# Versions are the ones actually resolved and tested during Phase 1
+# implementation. Pinned exactly so all three team members and both operating
+# systems get an identical environment.
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+
+# Testing.
+# httpx2 is required by starlette's TestClient; without it every test run
+# emits a StarletteDeprecationWarning.
+pytest==9.1.1
+httpx2==2.12.0

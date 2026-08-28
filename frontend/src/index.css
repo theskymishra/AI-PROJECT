@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   AI-DERS design tokens
+   ==========================================================================
+   Dark command-centre interface. High information density, minimal decoration,
+   five semantic colours and no sixth.
+
+   The default Tailwind palette is deliberately RESET below. This is not
+   tidiness: it means `bg-blue-500` and friends do not exist as utility
+   classes, so the palette constraint is enforced by the tooling rather than by
+   remembering it during code review. Every colour on screen has to mean
+   something.
+   ========================================================================== */
+
+@theme {
+  --color-*: initial;
+
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Surfaces */
+  --color-bg: #0b0e14; /* page */
+  --color-panel: #121620; /* cards */
+  --color-panel-2: #1a1f2b; /* raised / hover */
+  --color-border: #232936;
+
+  /* Text */
+  --color-fg: #e4e8ef;
+  --color-fg-muted: #8b93a5;
+
+  /* Semantic */
+  --color-info: #3b82f6; /* system / AI activity */
+  --color-safe: #10b981; /* safe / success */
+  --color-warn: #f59e0b; /* warning / strained */
+  --color-crit: #ef4444; /* critical / blocked */
+  --color-idle: #6b7280; /* inactive / neutral */
+
+  /* Typography. IBM Plex Sans for UI, IBM Plex Mono for every number, id,
+     probability, timer and metric. Both are self-hosted via @fontsource so the
+     application works with no network access. */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* 11px. The instrument-panel size, used for labels and units. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  --radius-panel: 0.25rem;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tabular figures so live-updating values do not shift horizontally as they
+     change. This matters more than it sounds on a console that redraws every
+     tick. */
+  code,
+  kbd,
+  samp,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-info);
+    outline-offset: 2px;
+  }
+}
+
+/* Quality floor, not a feature: motion is opt-out for anyone who has asked the
+   operating system to reduce it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
