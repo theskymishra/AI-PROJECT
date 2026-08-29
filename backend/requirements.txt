@@ -12,3 +12,5 @@ pydantic==2.13.4
 # emits a StarletteDeprecationWarning.
 pytest==9.1.1
 httpx2==2.12.0
+pytest-asyncio==1.4.0
+pytest-timeout==2.4.0

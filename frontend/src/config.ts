@@ -32,3 +32,12 @@ export const HEALTH_POLL_INTERVAL_MS = 15_000;
 
 /** Request timeout. Short: a local backend either answers fast or is down. */
 export const REQUEST_TIMEOUT_MS = 5_000;
+
+/**
+ * Playback speeds offered by the UI.
+ *
+ * Mirrors ALLOWED_SPEEDS in backend/app/config.py. The backend rejects
+ * anything else with a 422, so these must stay in step. Speed changes how
+ * fast ticks are consumed; it never changes what happens on a given tick.
+ */
+export const ALLOWED_SPEEDS = [1, 2, 5] as const;

@@ -140,6 +140,13 @@ export interface Road {
   /** Composite display-only figure. Never an input to A*. */
   risk_score: number;
   blocked: boolean;
+  /**
+   * Derived server-side via @computed_field, not stored.
+   * Serialised deliberately: the map renders road state, and reimplementing
+   * the RISKY threshold in TypeScript would put one rule in two languages
+   * where they can silently drift apart.
+   */
+  status: RoadStatus;
 }
 
 export interface Emergency {
@@ -187,6 +194,9 @@ export interface Hospital {
   available_beds: number;
   total_icu: number;
   available_icu: number;
+  /** Derived server-side. See the note on Road.status. */
+  status: HospitalStatus;
+  has_icu: boolean;
 }
 
 export interface Shelter {
@@ -196,6 +206,8 @@ export interface Shelter {
   capacity: number;
   occupancy: number;
   safety_score: number;
+  /** Derived server-side. See the note on Road.status. */
+  status: ShelterStatus;
 }
 
 export interface SensorReading {
@@ -217,6 +229,7 @@ export type EventType =
   | "WATER_LEVEL_CHANGE"
   | "ROAD_BLOCKED"
   | "ROAD_RESTORED"
+  | "ROAD_DAMAGE"
   | "EMERGENCY_CREATED"
   | "HOSPITAL_OVERLOAD"
   | "ROUTE_INVALIDATED"
@@ -386,4 +399,119 @@ export interface PlanResult {
   nodes_expanded: number;
   execution_ms: number;
   invalidated_step: number | null;
+}
+
+/* ==========================================================================
+   Phase 2 — simulation snapshot and stream payloads
+   ========================================================================== */
+
+export interface ClockState {
+  tick: number;
+  speed: number;
+  status: SimStatus;
+  /** Pre-formatted MM:SS. Formatted server-side so it cannot drift from tick. */
+  elapsed_label: string;
+}
+
+export interface ScenarioInfo {
+  name: string;
+  label: string;
+  description: string;
+}
+
+export interface ScenarioDetail extends ScenarioInfo {
+  duration_ticks: number;
+}
+
+export interface EnvironmentState {
+  rainfall_mm: number;
+  water_level_m: number;
+  river_level_m: number;
+  /**
+   * ENVIRONMENT GROUND TRUTH, not an AI output.
+   *
+   * The agent never observes this. Sensors emit noisy symbols drawn from
+   * P(observation | true_flood_state); the Phase 5 HMM estimates this value
+   * from those symbols. Displaying it beside the Phase 5 estimate is what
+   * makes filtering lag visible. Never label it as an inference.
+   */
+  true_flood_state: FloodState;
+  /** Route cache key component. Bumped only past RISK_EPSILON. */
+  environment_version: number;
+}
+
+export interface SimulationStats {
+  active_emergencies: number;
+  people_at_risk: number;
+  patients_awaiting_transport: number;
+  available_ambulances: number;
+  total_ambulances: number;
+  available_beds: number;
+  total_beds: number;
+  available_icu: number;
+  blocked_roads: number;
+  risky_roads: number;
+  total_roads: number;
+}
+
+/** Full state, sent on SSE connect and by GET /api/simulation/state. */
+export interface SimulationSnapshot {
+  clock: ClockState;
+  scenario: ScenarioDetail;
+  available_scenarios: ScenarioInfo[];
+  environment: EnvironmentState;
+  stats: SimulationStats;
+  nodes: WorldNode[];
+  zones: Zone[];
+  roads: Road[];
+  emergencies: Emergency[];
+  ambulances: Ambulance[];
+  hospitals: Hospital[];
+  shelters: Shelter[];
+  sensors: SensorReading[];
+  sensor_history: SensorReading[];
+  timeline: TimelineEntry[];
+  alerts: Alert[];
+}
+
+/**
+ * Per-tick delta.
+ *
+ * READ THE MERGE SEMANTICS BEFORE CONSUMING THIS. Fields fall into three
+ * categories and MUST be handled differently:
+ *
+ *   COMPLETE  clock, environment, stats, sensors, hospitals
+ *             Always present, always the full set. Replace wholesale.
+ *
+ *   PARTIAL   roads, emergencies
+ *             Present ONLY when something changed, and containing ONLY the
+ *             changed entities -- typically 1 of 38 roads. MERGE BY ID.
+ *             Replacing the local array with one of these deltas silently
+ *             deletes every entity it does not mention.
+ *
+ *   TAIL      timeline_tail, alerts_tail
+ *             Always present (empty array when nothing new), last 5 entries.
+ *             Append with de-duplication by id; the same entries legitimately
+ *             arrive twice across a reconnect.
+ *
+ * `ambulances` is deliberately absent: the backend does not send it on tick
+ * frames in Phase 2. Ambulance movement arrives in Phase 10.
+ */
+export interface TickPayload {
+  clock: ClockState;
+  environment: EnvironmentState;
+  stats: SimulationStats;
+  sensors: SensorReading[];
+  hospitals: Hospital[];
+  timeline_tail: TimelineEntry[];
+  alerts_tail: Alert[];
+  /** PARTIAL delta -- merge by id, never replace. */
+  roads?: Road[];
+  /** PARTIAL delta -- merge by id, never replace. */
+  emergencies?: Emergency[];
+}
+
+export interface SimControlPayload {
+  action: string;
+  snapshot: SimulationSnapshot;
 }

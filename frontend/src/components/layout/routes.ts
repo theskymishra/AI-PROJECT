@@ -10,7 +10,7 @@
  * routes as they are built resolves the conflict and makes progress visible.
  *
  * Each phase appends its own entry:
- *   Phase 3  Disaster Map
+ *   Phase 3  Disaster Map (replaces the minimal WorldPreview on the dashboard)
  *   Phase 4  AI Routing
  *   Phase 5  Risk Analysis
  *   Phase 6  AI Reasoning

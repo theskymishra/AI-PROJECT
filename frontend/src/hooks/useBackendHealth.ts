@@ -24,7 +24,19 @@ export interface BackendHealth {
   refresh: () => void;
 }
 
-export function useBackendHealth(): BackendHealth {
+export interface UseBackendHealthOptions {
+  /**
+   * Suspend interval polling. Set while the SSE stream is open: a live stream
+   * already proves the backend is reachable, so polling as well is redundant
+   * traffic on a console that is meant to be push-driven.
+   */
+  paused?: boolean;
+}
+
+export function useBackendHealth(
+  options: UseBackendHealthOptions = {},
+): BackendHealth {
+  const { paused = false } = options;
   const [state, setState] = useState<ConnectionState>("checking");
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -61,16 +73,18 @@ export function useBackendHealth(): BackendHealth {
     mountedRef.current = true;
     void check();
 
-    const interval = window.setInterval(() => void check(), HEALTH_POLL_INTERVAL_MS);
+    const interval = paused
+      ? null
+      : window.setInterval(() => void check(), HEALTH_POLL_INTERVAL_MS);
     const onFocus = () => void check();
     window.addEventListener("focus", onFocus);
 
     return () => {
       mountedRef.current = false;
-      window.clearInterval(interval);
+      if (interval !== null) window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
-  }, [check]);
+  }, [check, paused]);
 
   return { state, health, error, latencyMs, lastCheckedAt, refresh };
 }

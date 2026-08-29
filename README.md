@@ -7,14 +7,27 @@
 > emergency-management system. No output it produces should be used to make real
 > emergency decisions.
 
-**Current build: Phase 1 of 14 — Project Foundation.**
+**Current build: Phase 2 of 14 — Disaster Simulation Core.**
 
 ---
 
 ## What exists right now
 
-Phase 1 is the foundation only. There is no simulation, no map and no AI yet;
-those arrive in Phases 2 through 8. What works today:
+Phases 1 and 2. There is no AI yet — search, CSP, probabilistic reasoning and
+planning arrive in Phases 4 through 8. What works today:
+
+**Phase 2 — simulation core**
+
+- Deterministic tick-based simulation engine (1 tick = 1 simulated second)
+- 24-node / 38-road / 5-zone world with three distinct Riverside→Highland corridors
+- Four scenarios: NORMAL, MODERATE_FLOOD, SEVERE_FLOOD, DYNAMIC_ROAD_FAILURE
+- Hidden true flood state with noisy sensor emission (the Phase 5 HMM inverts this)
+- Start / pause / resume / reset / speed (1x, 2x, 5x) / scenario selection
+- Server-Sent Events push with sequence-gap resynchronisation
+- Live dashboard: stats, world overview, environment, event timeline, alerts
+- `environment_version` route-cache invalidation with RISK_EPSILON change detection
+
+**Phase 1 — foundation**
 
 - FastAPI backend with a health endpoint and configured CORS
 - React + TypeScript + Vite frontend with the dark command-centre design system
@@ -22,7 +35,7 @@ those arrive in Phases 2 through 8. What works today:
 - Live backend connection monitoring with specific, actionable error states
 - The **frozen data contract**: Pydantic models and their TypeScript mirror
 - The deterministic `patients` derivation rule, with tests
-- 60 backend tests
+- 255 backend tests
 
 The dashboard shows connection status and backend build information — the things
 that are genuinely real at this stage. There are deliberately no statistic cards
@@ -177,7 +190,7 @@ cd backend
 python -m pytest
 ```
 
-Expected: `60 passed`.
+Expected: `255 passed`.
 
 Warnings are promoted to errors (`-W error` in `pytest.ini`). A warning nobody
 fixes is a warning everybody learns to ignore, and that is how a real one gets
@@ -197,6 +210,18 @@ cd frontend
 npm run typecheck    # tsc --noEmit
 npm run build        # typecheck, then production build
 ```
+
+### Integration (both servers must be running)
+
+```bash
+node scripts/verify_contract.mjs   # 54 live API + SSE contract checks
+./scripts/verify_sse.sh            # SSE headers, frames, subscriber cleanup
+```
+
+These exist because a green build and a clean typecheck proved nothing about
+whether live state actually reaches a client. Two real defects — an
+intermittently-absent SSE field, and partial road deltas being replaced rather
+than merged — passed both and were caught only here.
 
 `npm run build` runs the typecheck first, so a type error fails the build rather
 than shipping.
@@ -351,8 +376,8 @@ Use `py -3` instead, as shown in the commands above.
 | Phase | Delivers | Status |
 |---|---|---|
 | 1 | Foundation, frozen contract | **complete** |
-| 2 | Simulation core, tick clock, SSE | next |
-| 3 | Interactive disaster map |  |
+| 2 | Simulation core, tick clock, SSE | **complete** |
+| 3 | Interactive disaster map | next |
 | 4 | A\* routing, route cache |  |
 | 5 | HMM + Bayesian Network, risk-driven rerouting |  |
 | 6 | Knowledge engine, forward chaining, FOL |  |

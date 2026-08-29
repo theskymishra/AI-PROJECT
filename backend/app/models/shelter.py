@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from app.models.common import NodeId, ShelterId, ShelterStatus
 
@@ -18,6 +18,7 @@ class Shelter(BaseModel):
     occupancy: int = Field(default=0, ge=0)
     safety_score: float = Field(ge=0.0, le=1.0)
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def status(self) -> ShelterStatus:
         if self.capacity == 0 or self.occupancy >= self.capacity:

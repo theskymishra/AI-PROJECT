@@ -3,11 +3,13 @@
 Every tuning constant in the project lives here, so that a viva question of the
 form "what happens if you change X?" has exactly one place to point at.
 
-Phase 1 defines only the constants Phase 1 actually uses. Simulation, search,
-CSP, probability and planning constants (SCALE_KM_PER_UNIT, the A* cost weights
-alpha/beta/gamma, RISK_EPSILON, the HMM matrices, the noisy-OR parameters) are
-added by the phase that introduces them, because a constant with no consumer is
-dead code that misleads the reader about what the system currently does.
+Each constant is added by the phase that introduces it, because a constant with
+no consumer is dead code that misleads the reader about what the system
+currently does. Phase 1 added build identity and server settings; Phase 2 added
+world geometry, the simulation clock, flood dynamics and the sensor emission
+matrix. Still to come: the A* cost weights alpha/beta/gamma (Phase 4), the HMM
+transition matrix and prior (Phase 5), and the Bayesian noisy-OR parameters
+(Phase 5).
 
 Settings are read from the environment once, at import time, via
 ``load_settings()``. Tests call ``load_settings()`` directly with a patched
@@ -27,7 +29,7 @@ APP_NAME = "AI-DERS"
 APP_FULL_NAME = "AI-Driven Disaster Evacuation & Emergency Response System"
 APP_TAGLINE = "Intelligent emergency response under uncertainty."
 VERSION = "0.1.0"
-CURRENT_PHASE = 1
+CURRENT_PHASE = 2
 TOTAL_PHASES = 14
 API_PREFIX = "/api"
 
@@ -49,6 +51,112 @@ DEFAULT_CORS_ORIGINS: tuple[str, ...] = (
 # derive_rng(seed, tick, channel) -- see Phase 0 section 3. Fixed seed plus
 # tick-indexed derivation is what makes runs reproducible across speeds.
 DEFAULT_SEED = 20260828
+
+
+# --------------------------------------------------------------------------
+# Phase 2: world geometry
+# --------------------------------------------------------------------------
+
+#: Map coordinate space is 1000 x 700 units. At this scale the region is
+#: 50 km x 35 km. Every distance in the system is kilometres.
+SCALE_KM_PER_UNIT = 0.05
+
+MAP_WIDTH_UNITS = 1000
+MAP_HEIGHT_UNITS = 700
+
+
+# --------------------------------------------------------------------------
+# Phase 2: simulation clock
+# --------------------------------------------------------------------------
+
+#: One tick is one simulated second.
+SECONDS_PER_TICK = 1.0
+
+#: How often the background loop wakes to consume due ticks.
+TICK_POLL_SECONDS = 0.1
+
+#: Speeds the UI may select. Speed changes how fast ticks are CONSUMED; it
+#: never changes what happens on a given tick, which is why 1x and 5x produce
+#: identical event logs.
+ALLOWED_SPEEDS = (1, 2, 5)
+
+#: Upper bound on ticks consumed in one pump. Without it, a laptop resuming
+#: from sleep would try to catch up thousands of ticks in a single iteration
+#: and block the event loop.
+MAX_TICKS_PER_PUMP = 50
+
+
+# --------------------------------------------------------------------------
+# Phase 2: environment_version invalidation
+# --------------------------------------------------------------------------
+
+#: Minimum change in a road's continuous risk fields before the route cache is
+#: invalidated.
+#:
+#: PHASE 0 CORRECTION. Phase 0 section 2.1 applied this epsilon to
+#: failure_probability only, and listed bare "flood_level or damage_level
+#: changes" as an unconditional trigger. Flood level moves every tick while
+#: water is rising, so that rule would bump environment_version every tick and
+#: the route cache would never serve a single hit. The epsilon applies to all
+#: three continuous fields.
+RISK_EPSILON = 0.05
+
+
+# --------------------------------------------------------------------------
+# Phase 2: flood dynamics (ENVIRONMENT ground truth, not inference)
+# --------------------------------------------------------------------------
+
+#: Water level in metres at or above which the true hidden flood state enters
+#: each band. The environment owns this; the agent never sees it.
+FLOOD_STATE_THRESHOLDS_M = {
+    "RISING": 1.5,
+    "HIGH": 2.5,
+    "CRITICAL": 3.5,
+}
+
+#: How strongly a zone's elevation protects it from the regional water level.
+#: zone_flood = clamp((water_level_m / FLOOD_REFERENCE_M) * (1 - elevation), 0, 1)
+FLOOD_REFERENCE_M = 4.0
+
+#: HMM emission matrix B. P(observation | true flood state).
+#:
+#: THIS LIVES IN PHASE 2 ON PURPOSE. The environment samples the observation
+#: symbol from this distribution; the HMM inverts it in Phase 5. The rows
+#: overlap deliberately -- a sensor in the HIGH state frequently reports
+#: MEDIUM_WATER. Without that overlap the Phase 5 posterior would pin at ~1.0
+#: every tick and the HMM panel would look hard-coded.
+EMISSION_MATRIX = {
+    "NORMAL":   {"LOW_WATER": 0.75, "MEDIUM_WATER": 0.20, "HIGH_WATER": 0.04, "RAPIDLY_RISING": 0.01},
+    "RISING":   {"LOW_WATER": 0.20, "MEDIUM_WATER": 0.50, "HIGH_WATER": 0.20, "RAPIDLY_RISING": 0.10},
+    "HIGH":     {"LOW_WATER": 0.05, "MEDIUM_WATER": 0.25, "HIGH_WATER": 0.50, "RAPIDLY_RISING": 0.20},
+    "CRITICAL": {"LOW_WATER": 0.01, "MEDIUM_WATER": 0.09, "HIGH_WATER": 0.40, "RAPIDLY_RISING": 0.50},
+}
+
+#: Standard deviation of the measurement jitter added to raw gauge values, in
+#: metres and millimetres respectively. Cosmetic relative to the emission
+#: noise above, but it stops the sensor charts looking like staircases.
+SENSOR_JITTER_WATER_M = 0.06
+SENSOR_JITTER_RAINFALL_MM = 1.2
+
+#: Bounded history retained in memory. This is a simulation, not a database.
+MAX_TIMELINE_ENTRIES = 200
+MAX_ALERTS = 50
+MAX_SENSOR_HISTORY = 300
+
+#: Ramp rates. Scenario events set a TARGET; the environment moves toward it at
+#: this rate per tick. Ramping rather than stepping means the sensor charts show
+#: a rising curve the HMM has to track, instead of an instant jump that would
+#: make filtering trivial.
+RAINFALL_RAMP_MM_PER_TICK = 0.35
+WATER_RAMP_M_PER_TICK = 0.02
+
+#: Baseline conditions at tick 0.
+BASELINE_RAINFALL_MM = 2.0
+BASELINE_WATER_LEVEL_M = 0.8
+
+#: River level tracks the water gauge with a fixed offset and amplification.
+RIVER_LEVEL_OFFSET_M = 1.4
+RIVER_LEVEL_GAIN = 1.25
 
 
 @dataclass(frozen=True)

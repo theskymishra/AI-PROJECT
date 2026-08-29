@@ -75,3 +75,71 @@ export async function fetchHealth(): Promise<TimedHealth> {
     latencyMs: Math.round(performance.now() - startedAt),
   };
 }
+
+/* ==========================================================================
+   Phase 2 -- simulation commands
+   ==========================================================================
+   Every command returns the FULL snapshot, so the caller applies the response
+   directly instead of issuing a command and then waiting for the stream to
+   catch up. That removes a whole class of "I clicked pause and nothing
+   happened for a second" bugs, and it means the controls still work if the
+   SSE connection is down.
+   ========================================================================== */
+
+import type { ScenarioDetail, SimulationSnapshot } from "@/types";
+
+export async function fetchState(): Promise<SimulationSnapshot> {
+  const { data } = await api.get<SimulationSnapshot>("/api/simulation/state");
+  return data;
+}
+
+export async function fetchScenarios(): Promise<ScenarioDetail[]> {
+  const { data } = await api.get<ScenarioDetail[]>("/api/simulation/scenarios");
+  return data;
+}
+
+export async function startSimulation(): Promise<SimulationSnapshot> {
+  const { data } = await api.post<SimulationSnapshot>("/api/simulation/start");
+  return data;
+}
+
+export async function pauseSimulation(): Promise<SimulationSnapshot> {
+  const { data } = await api.post<SimulationSnapshot>("/api/simulation/pause");
+  return data;
+}
+
+export async function resumeSimulation(): Promise<SimulationSnapshot> {
+  const { data } = await api.post<SimulationSnapshot>("/api/simulation/resume");
+  return data;
+}
+
+export async function resetSimulation(): Promise<SimulationSnapshot> {
+  const { data } = await api.post<SimulationSnapshot>("/api/simulation/reset");
+  return data;
+}
+
+export async function setSpeed(speed: number): Promise<SimulationSnapshot> {
+  const { data } = await api.post<SimulationSnapshot>("/api/simulation/speed", {
+    speed,
+  });
+  return data;
+}
+
+export async function setScenario(name: string): Promise<SimulationSnapshot> {
+  const { data } = await api.post<SimulationSnapshot>("/api/simulation/scenario", {
+    name,
+  });
+  return data;
+}
+
+export interface StreamHealth {
+  status: string;
+  subscribers: number;
+  dropped_frames: number;
+  seq: number;
+}
+
+export async function fetchStreamHealth(): Promise<StreamHealth> {
+  const { data } = await api.get<StreamHealth>("/api/simulation/stream-health");
+  return data;
+}

@@ -11,16 +11,18 @@ each. The lifespan handler below warns loudly if it detects otherwise.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import disaster, emergencies, health, resources, simulation, stream
 from app.config import settings
+from app.simulation.engine import run_engine_loop
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,8 +56,16 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.seed,
     )
     logger.info("CORS origins allowed: %s", ", ".join(settings.cors_origins))
-    yield
-    logger.info("%s shutting down", settings.app_name)
+
+    # The simulation clock. One task, one process, one world.
+    loop_task = asyncio.create_task(run_engine_loop(), name="aiders-engine")
+    try:
+        yield
+    finally:
+        loop_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await loop_task
+        logger.info("%s shutting down", settings.app_name)
 
 
 def create_app() -> FastAPI:
@@ -86,6 +96,11 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router, prefix=settings.api_prefix)
+    app.include_router(simulation.router, prefix=settings.api_prefix)
+    app.include_router(disaster.router, prefix=settings.api_prefix)
+    app.include_router(emergencies.router, prefix=settings.api_prefix)
+    app.include_router(resources.router, prefix=settings.api_prefix)
+    app.include_router(stream.router, prefix=settings.api_prefix)
 
     return app
 

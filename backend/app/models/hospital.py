@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from app.models.common import HospitalId, HospitalStatus, NodeId
 
@@ -19,6 +19,7 @@ class Hospital(BaseModel):
     total_icu: int = Field(ge=0)
     available_icu: int = Field(ge=0)
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def status(self) -> HospitalStatus:
         if self.available_beds == 0:
@@ -27,6 +28,7 @@ class Hospital(BaseModel):
             return HospitalStatus.STRAINED
         return HospitalStatus.OPEN
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def has_icu(self) -> bool:
         return self.total_icu > 0

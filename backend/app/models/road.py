@@ -17,7 +17,7 @@ world-build time, never hand-authored.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from app.models.common import ElevationBand, NodeId, RoadId, RoadStatus
 
@@ -75,9 +75,15 @@ class Road(BaseModel):
 
     blocked: bool = False
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def status(self) -> RoadStatus:
-        """Derived road status. Not a stored field."""
+        """Derived road status.
+
+        Computed, not stored -- but it IS serialised. The frontend renders road
+        state on the map, and reimplementing the threshold in TypeScript would
+        put the same rule in two languages where they can drift apart.
+        """
         if self.blocked:
             return RoadStatus.BLOCKED
         if self.failure_probability >= RISKY_THRESHOLD:

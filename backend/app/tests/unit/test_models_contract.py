@@ -107,12 +107,15 @@ def test_model_round_trips_through_json(model):
     _round_trip(model)
 
 
-def test_road_status_is_derived_not_stored():
+def test_road_status_is_derived_but_serialised():
+    """Phase 2 change: status is computed from blocked + failure_probability,
+    and it IS serialised. The map needs it, and recomputing the threshold in
+    TypeScript would put one rule in two languages."""
     road = Road(id="R1", source="N1", destination="N2", distance=3.0,
                 geometric_length=3.0, detour_factor=1.0,
                 elevation_band=ElevationBand.MED)
     assert road.status is RoadStatus.SAFE
-    assert "status" not in road.model_dump()
+    assert road.model_dump()["status"] == "SAFE"
 
     road.failure_probability = 0.5
     assert road.status is RoadStatus.RISKY
