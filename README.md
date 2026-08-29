@@ -7,14 +7,23 @@
 > emergency-management system. No output it produces should be used to make real
 > emergency decisions.
 
-**Current build: Phase 2 of 14 — Disaster Simulation Core.**
+**Current build: Phase 3 of 14 — Disaster Map.**
 
 ---
 
 ## What exists right now
 
-Phases 1 and 2. There is no AI yet — search, CSP, probabilistic reasoning and
+Phases 1 to 3. There is no AI yet — search, CSP, probabilistic reasoning and
 planning arrive in Phases 4 through 8. What works today:
+
+**Phase 3 — disaster map**
+
+- Interactive SVG map: wheel/pinch zoom anchored on the pointer, drag to pan
+- Hover highlighting, click-to-inspect detail panel, colour key
+- Zones, roads, hospitals, shelters, ambulances, emergencies, flood shading
+- Live road status (SAFE / RISKY / BLOCKED) by colour *and* dash pattern
+- One map component in two modes: interactive page, static dashboard embed
+- 58 frontend tests (Vitest + jsdom)
 
 **Phase 2 — simulation core**
 
@@ -208,8 +217,12 @@ python -m pytest app/tests/unit/test_patients_rule.py # one file
 ```bash
 cd frontend
 npm run typecheck    # tsc --noEmit
-npm run build        # typecheck, then production build
+npm test             # vitest run  -> 58 tests
+npm run build        # typecheck, then tests, then production build
 ```
+
+`npm run build` runs the typecheck AND the test suite first, so neither a type
+error nor a failing test can produce a build.
 
 ### Integration (both servers must be running)
 
@@ -299,7 +312,8 @@ ai-ders/
         ├── services/api.ts    axios client, error normalisation
         ├── hooks/             useBackendHealth
         ├── components/layout/ AppLayout, Sidebar, Header, StatusBadge, routes
-        └── pages/Dashboard.tsx
+        ├── components/map/     DisasterMap, geometry, Legend, Controls, Detail
+        └── pages/              Dashboard, DisasterMapPage
 ```
 
 ### The frozen contract
@@ -377,8 +391,8 @@ Use `py -3` instead, as shown in the commands above.
 |---|---|---|
 | 1 | Foundation, frozen contract | **complete** |
 | 2 | Simulation core, tick clock, SSE | **complete** |
-| 3 | Interactive disaster map | next |
-| 4 | A\* routing, route cache |  |
+| 3 | Interactive disaster map | **complete** |
+| 4 | A\* routing, route cache | next |
 | 5 | HMM + Bayesian Network, risk-driven rerouting |  |
 | 6 | Knowledge engine, forward chaining, FOL |  |
 | 7 | CSP resource allocation |  |

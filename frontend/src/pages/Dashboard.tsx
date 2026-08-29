@@ -13,7 +13,7 @@ import { EnvironmentPanel } from "@/components/dashboard/EnvironmentPanel";
 import { EventTimeline } from "@/components/dashboard/EventTimeline";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SimulationControls } from "@/components/simulation/SimulationControls";
-import { WorldPreview } from "@/components/world/WorldPreview";
+import { DisasterMap } from "@/components/map/DisasterMap";
 import { useSimulation } from "@/store/SimulationProvider";
 
 export function Dashboard() {
@@ -117,12 +117,19 @@ export function Dashboard() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
-          <WorldPreview
+          {/* Same component as the map page, controls disabled. Phase 0
+              said replace WorldPreview rather than extend it; sharing one
+              implementation is what stops the dashboard view drifting. */}
+          <DisasterMap
             nodes={snapshot.nodes}
             zones={snapshot.zones}
             roads={snapshot.roads}
             hospitals={snapshot.hospitals}
             shelters={snapshot.shelters}
+            ambulances={snapshot.ambulances}
+            emergencies={snapshot.emergencies}
+            interactive={false}
+            title="World Overview"
           />
           <div className="grid gap-4 md:grid-cols-2">
             <FacilityPanel snapshot={snapshot} />
