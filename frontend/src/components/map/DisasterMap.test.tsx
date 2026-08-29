@@ -386,3 +386,67 @@ describe("empty and partial data", () => {
     expect(container.querySelector("svg")).toBeTruthy();
   });
 });
+
+/* -- Phase 4 route overlays ----------------------------------------------- */
+
+describe("route overlay", () => {
+  it("draws no overlay when no route is supplied", () => {
+    renderMap();
+    expect(screen.queryByTestId("map-route")).toBeNull();
+    expect(screen.queryByTestId("map-explored")).toBeNull();
+  });
+
+  it("highlights every road on the route", () => {
+    renderMap({ routeEdges: ["R1", "R17"] });
+    expect(screen.getByTestId("route-edge-R1")).toBeTruthy();
+    expect(screen.getByTestId("route-edge-R17")).toBeTruthy();
+    expect(screen.queryByTestId("route-edge-R19")).toBeNull();
+  });
+
+  it("rings every node on the path", () => {
+    renderMap({ routePath: ["N1", "N5", "N10"] });
+    expect(screen.getByTestId("route-node-N1")).toBeTruthy();
+    expect(screen.getByTestId("route-node-N10")).toBeTruthy();
+    expect(screen.queryByTestId("route-node-N12")).toBeNull();
+  });
+
+  it("marks explored nodes from the search expansion order", () => {
+    renderMap({ exploredNodes: ["N1", "N5"] });
+    expect(screen.getByTestId("explored-N1")).toBeTruthy();
+    expect(screen.getByTestId("explored-N5")).toBeTruthy();
+    expect(screen.queryByTestId("explored-N18")).toBeNull();
+  });
+
+  it("grows the explored set as the animation advances", () => {
+    const { rerender } = renderMap({ exploredNodes: ["N1"] });
+    expect(screen.queryByTestId("explored-N5")).toBeNull();
+
+    rerender(
+      <DisasterMap
+        nodes={nodes} zones={zones} roads={roads}
+        hospitals={hospitals} shelters={shelters}
+        ambulances={ambulances} emergencies={emergencies}
+        exploredNodes={["N1", "N5"]}
+      />,
+    );
+    expect(screen.getByTestId("explored-N5")).toBeTruthy();
+  });
+
+  it("marks the start and goal of the query", () => {
+    renderMap({ startNode: "N1", goalNode: "N18" });
+    expect(screen.getByTestId("route-start-N1")).toBeTruthy();
+    expect(screen.getByTestId("route-goal-N18")).toBeTruthy();
+  });
+
+  it("ignores endpoints that are not in the world", () => {
+    renderMap({ startNode: "GHOST", goalNode: "N18" });
+    expect(screen.queryByTestId("route-start-GHOST")).toBeNull();
+    expect(screen.getByTestId("route-goal-N18")).toBeTruthy();
+  });
+
+  it("skips route edges whose endpoints are missing", () => {
+    renderMap({ routeEdges: ["R17", "NOT_A_ROAD"] });
+    expect(screen.getByTestId("route-edge-R17")).toBeTruthy();
+    expect(screen.queryByTestId("route-edge-NOT_A_ROAD")).toBeNull();
+  });
+});

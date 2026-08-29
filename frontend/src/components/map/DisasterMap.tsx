@@ -80,6 +80,19 @@ export interface DisasterMapProps {
   /** Full map page when true; dashboard embed when false. */
   interactive?: boolean;
   title?: string;
+  /**
+   * Phase 4 overlays. Both come from a real A* run; nothing here is computed
+   * in the browser.
+   *
+   * routeEdges     road ids on the chosen path, drawn highlighted
+   * exploredNodes  nodes A* expanded, in order. The SearchVisualizer passes a
+   *                growing prefix of expansion_order to animate the search.
+   */
+  routeEdges?: string[];
+  routePath?: string[];
+  exploredNodes?: string[];
+  startNode?: string | null;
+  goalNode?: string | null;
 }
 
 export function DisasterMap({
@@ -92,6 +105,11 @@ export function DisasterMap({
   emergencies,
   interactive = true,
   title = "Disaster Map",
+  routeEdges,
+  routePath,
+  exploredNodes,
+  startNode = null,
+  goalNode = null,
 }: DisasterMapProps) {
   const [view, setView] = useState<ViewBox>(FULL_VIEW);
   const [hovered, setHovered] = useState<Selection | null>(null);
@@ -124,6 +142,16 @@ export function DisasterMap({
     }
     return counts;
   }, [ambulances]);
+
+  const routeEdgeSet = useMemo(
+    () => new Set(routeEdges ?? []),
+    [routeEdges],
+  );
+  const routeNodeSet = useMemo(() => new Set(routePath ?? []), [routePath]);
+  const exploredSet = useMemo(
+    () => new Set(exploredNodes ?? []),
+    [exploredNodes],
+  );
 
   const roadCounts = useMemo(() => {
     let blocked = 0;
@@ -309,6 +337,26 @@ export function DisasterMap({
             })}
           </g>
 
+          {/* Nodes A* expanded, drawn beneath the roads so the path stays
+              readable. Order comes from the search's expansion_order. */}
+          {exploredSet.size > 0 && (
+            <g data-testid="map-explored" pointerEvents="none">
+              {nodes
+                .filter((node) => exploredSet.has(node.id))
+                .map((node) => (
+                  <circle
+                    key={`explored-${node.id}`}
+                    data-testid={`explored-${node.id}`}
+                    cx={node.x}
+                    cy={node.y}
+                    r={9 * scale}
+                    fill="var(--color-info)"
+                    opacity={0.22}
+                  />
+                ))}
+            </g>
+          )}
+
           <g data-testid="map-roads">
             {roads.map((road) => {
               const from = nodeById.get(road.source);
@@ -359,6 +407,33 @@ export function DisasterMap({
             })}
           </g>
 
+          {/* The chosen route, drawn above the road layer. */}
+          {routeEdgeSet.size > 0 && (
+            <g data-testid="map-route" pointerEvents="none">
+              {roads
+                .filter((road) => routeEdgeSet.has(road.id))
+                .map((road) => {
+                  const from = nodeById.get(road.source);
+                  const to = nodeById.get(road.destination);
+                  if (!from || !to) return null;
+                  return (
+                    <line
+                      key={`route-${road.id}`}
+                      data-testid={`route-edge-${road.id}`}
+                      x1={from.x}
+                      y1={from.y}
+                      x2={to.x}
+                      y2={to.y}
+                      stroke="var(--color-info)"
+                      strokeWidth={5 * scale}
+                      strokeLinecap="round"
+                      opacity={0.9}
+                    />
+                  );
+                })}
+            </g>
+          )}
+
           <g data-testid="map-nodes">
             {nodes.map((node) => {
               const active = isHovered("node", node.id) || isSelected("node", node.id);
@@ -387,6 +462,18 @@ export function DisasterMap({
                       r={size * 2.1}
                       fill="var(--color-info)"
                       opacity={0.2}
+                    />
+                  )}
+
+                  {routeNodeSet.has(node.id) && (
+                    <circle
+                      data-testid={`route-node-${node.id}`}
+                      cx={node.x}
+                      cy={node.y}
+                      r={size * 1.5}
+                      fill="none"
+                      stroke="var(--color-info)"
+                      strokeWidth={2 * scale}
                     />
                   )}
 
@@ -444,6 +531,32 @@ export function DisasterMap({
                 </g>
               );
             })}
+          </g>
+
+          {/* Start and goal markers for the current query. */}
+          <g data-testid="map-endpoints" pointerEvents="none">
+            {startNode && nodeById.has(startNode) && (
+              <circle
+                data-testid={`route-start-${startNode}`}
+                cx={nodeById.get(startNode)!.x}
+                cy={nodeById.get(startNode)!.y}
+                r={11 * scale}
+                fill="none"
+                stroke="var(--color-safe)"
+                strokeWidth={3 * scale}
+              />
+            )}
+            {goalNode && nodeById.has(goalNode) && (
+              <circle
+                data-testid={`route-goal-${goalNode}`}
+                cx={nodeById.get(goalNode)!.x}
+                cy={nodeById.get(goalNode)!.y}
+                r={11 * scale}
+                fill="none"
+                stroke="var(--color-warn)"
+                strokeWidth={3 * scale}
+              />
+            )}
           </g>
 
           {/* Hover label, last so it is never occluded. */}

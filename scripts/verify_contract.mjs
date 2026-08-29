@@ -297,14 +297,163 @@ async function main() {
   await api.post("/api/simulation/reset");
 
   /* -- subscriber cleanup ------------------------------------------------ */
+  //
+  // Measured as a DELTA against a baseline, not against zero.
+  //
+  // The earlier version asserted `subscribers === 0`, which is a property of
+  // the whole server rather than of the connection under test. Any other
+  // legitimate client -- most obviously the app open in a browser tab, which
+  // is the normal state while developing -- makes a CORRECT server report 1,
+  // and the check failed for a server that was behaving perfectly.
+  //
+  // Opening a stream, confirming the count rises, closing it, and confirming
+  // the count returns to where it started proves the thing that actually
+  // matters and is true no matter who else is connected.
   console.log("\n[stream health]");
   const streamHealth = await api.get("/api/simulation/stream-health");
   hasKeys(streamHealth, ["status", "subscribers", "dropped_frames", "seq"],
     "StreamHealth shape");
-  check("subscriber slots released after disconnect",
-    streamHealth.subscribers === 0, `subscribers=${streamHealth.subscribers}`);
+
+  const baseline = streamHealth.subscribers;
+  if (baseline > 0) {
+    console.log(`    note: ${baseline} other client(s) already connected ` +
+      `(a browser tab on the app?). Cleanup is measured as a delta.`);
+  }
+
+  // The probe holds the connection open by parking on reader.read(), NOT on a
+  // never-resolving promise. That distinction matters: aborting the fetch
+  // rejects a pending read, but it cannot reject a bare `new Promise(() => {})`
+  // that is already past the fetch -- awaiting one of those deadlocks the
+  // harness, which is exactly what the first version of this check did.
+  const probe = new AbortController();
+  const probeDone = (async () => {
+    try {
+      const response = await fetch(`${BASE}/api/stream`, { signal: probe.signal });
+      const reader = response.body.getReader();
+      // Loop until abort rejects the pending read.
+      for (;;) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+    } catch {
+      // AbortError is the expected exit.
+    }
+  })();
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  const during = (await api.get("/api/simulation/stream-health")).subscribers;
+  check("opening a stream registers a subscriber",
+    during === baseline + 1, `${baseline} -> ${during}`);
+
+  probe.abort();
+  // Bounded: a probe that will not settle must fail the run, not hang it.
+  await Promise.race([
+    probeDone,
+    new Promise((r) => setTimeout(r, 3000)),
+  ]);
+
+  // Cleanup crosses a socket, so it is not instantaneous. Measured at 3-9 ms
+  // locally; the bound is generous so a loaded machine does not flake.
+  let releasedAfterMs = null;
+  const closeStartedAt = Date.now();
+  for (let i = 0; i < 40; i += 1) {
+    const now = (await api.get("/api/simulation/stream-health")).subscribers;
+    if (now <= baseline) { releasedAfterMs = Date.now() - closeStartedAt; break; }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  check("the subscriber this script opened was released on disconnect",
+    releasedAfterMs !== null,
+    releasedAfterMs === null
+      ? "still registered after 2s -- a real leak"
+      : `back to baseline ${baseline} in ${releasedAfterMs}ms`);
+
+  const finalHealth = await api.get("/api/simulation/stream-health");
+  check("no subscribers leaked across the whole run",
+    finalHealth.subscribers === baseline,
+    `baseline ${baseline}, now ${finalHealth.subscribers}`);
   check("no frames dropped during the run",
-    streamHealth.dropped_frames === 0, `dropped=${streamHealth.dropped_frames}`);
+    finalHealth.dropped_frames === 0, `dropped=${finalHealth.dropped_frames}`);
+
+  /* -- Phase 4: A* routing ------------------------------------------------ */
+  console.log("\n[A* routing]");
+  await api.post("/api/simulation/reset");
+
+  const r1 = await api.post("/api/ai/route", { start: "N1", goal: "N17" });
+  check("route endpoint returns 200", r1.status === 200);
+  const rt = r1.body.route;
+  hasKeys(rt, ["found", "path", "edges", "total_cost", "total_distance",
+    "nodes_generated", "nodes_expanded", "execution_ms", "expansion_order",
+    "environment_version", "failure_reason"], "RouteResult shape");
+  check("a route is found across the open world", rt.found === true);
+  check("path starts at N1 and ends at N17",
+    rt.path[0] === "N1" && rt.path[rt.path.length - 1] === "N17",
+    rt.path.join(" -> "));
+  check("edges = path length - 1",
+    rt.edges.length === rt.path.length - 1);
+  check("expansion metrics are real",
+    rt.nodes_expanded > 1 && rt.nodes_generated >= rt.nodes_expanded &&
+    rt.expansion_order.length === rt.nodes_expanded,
+    `expanded ${rt.nodes_expanded}, generated ${rt.nodes_generated}`);
+  check("execution time is measured", typeof rt.execution_ms === "number");
+  check("cost weights exposed",
+    r1.body.weights.flood === 2 && r1.body.weights.damage === 1.5 &&
+    r1.body.weights.failure === 3);
+
+  const bad = await api.post("/api/ai/route", { start: "NOPE", goal: "N17" });
+  check("unknown node is a 404, not a 500", bad.status === 404);
+
+  // Blocking the bridge must produce a genuinely different corridor -- not
+  // merely a re-run. This is the Phase 5 hard-failure precondition.
+  const beforeBlock = (await api.post("/api/ai/route",
+    { start: "N1", goal: "N17", use_cache: false })).body.route;
+  check("R17 is on the default optimal route", beforeBlock.edges.includes("R17"));
+
+  await api.post("/api/disaster/road/block", { road_id: "R17" });
+  const afterBlock = (await api.post("/api/ai/route",
+    { start: "N1", goal: "N17", use_cache: false })).body.route;
+
+  check("blocked road is excluded from the new route",
+    afterBlock.found && !afterBlock.edges.includes("R17"));
+  check("the new route is genuinely different, not just recomputed",
+    JSON.stringify(afterBlock.path) !== JSON.stringify(beforeBlock.path),
+    `${beforeBlock.path.length} hops -> ${afterBlock.path.length} hops`);
+  check("the detour costs more",
+    afterBlock.total_cost > beforeBlock.total_cost,
+    `${beforeBlock.total_cost.toFixed(2)} -> ${afterBlock.total_cost.toFixed(2)} risk-km`);
+  check("environment_version advanced with the block",
+    afterBlock.environment_version > beforeBlock.environment_version);
+  await api.post("/api/disaster/road/restore", { road_id: "R17" });
+
+  // Flooding must reach the cost function.
+  await api.post("/api/simulation/reset");
+  const dry = (await api.post("/api/ai/route",
+    { start: "N1", goal: "N17", use_cache: false })).body.route;
+  await api.post("/api/simulation/scenario", { name: "SEVERE_FLOOD" });
+  await api.post("/api/simulation/advance", { ticks: 200 });
+  const wet = (await api.post("/api/ai/route",
+    { start: "N1", goal: "N17", use_cache: false })).body.route;
+  check("flooding raises route cost above plain distance",
+    wet.total_cost > wet.total_distance,
+    `cost ${wet.total_cost.toFixed(2)} vs distance ${wet.total_distance.toFixed(2)} km`);
+  check("a flooded world costs more than a dry one",
+    wet.total_cost > dry.total_cost,
+    `${dry.total_cost.toFixed(2)} -> ${wet.total_cost.toFixed(2)}`);
+
+  // Cache behaviour must be observable.
+  await api.post("/api/simulation/reset");
+  await api.post("/api/ai/route", { start: "N1", goal: "N18", use_cache: true });
+  const cached = await api.post("/api/ai/route",
+    { start: "N1", goal: "N18", use_cache: true });
+  check("route cache reports a hit on a repeat query",
+    cached.body.cache.hits > 0, `hits=${cached.body.cache.hits}`);
+
+  const repeat1 = (await api.post("/api/ai/route",
+    { start: "N2", goal: "N20", use_cache: false })).body.route;
+  const repeat2 = (await api.post("/api/ai/route",
+    { start: "N2", goal: "N20", use_cache: false })).body.route;
+  check("identical state gives an identical search",
+    JSON.stringify(repeat1.expansion_order) === JSON.stringify(repeat2.expansion_order));
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);

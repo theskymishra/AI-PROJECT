@@ -515,3 +515,44 @@ export interface SimControlPayload {
   action: string;
   snapshot: SimulationSnapshot;
 }
+
+/* ==========================================================================
+   Phase 4 — A* routing
+   ========================================================================== */
+
+export interface RouteRequest {
+  start: NodeId;
+  goal: NodeId;
+  /** Force a fresh search so expansion metrics reflect this call, not a hit. */
+  use_cache?: boolean;
+}
+
+export interface RouteCacheStats {
+  hits: number;
+  misses: number;
+  invalidations: number;
+  entries: number;
+  hit_rate: number;
+}
+
+/**
+ * Cost weights, mirroring COST_WEIGHT_* in backend/app/config.py.
+ *
+ *     w(e) = distance * (1 + flood*flood_level + damage*damage_level
+ *                          + failure*P_fail)
+ *
+ * NOTE: `failure` multiplies road.failure_probability, which is 0.0 on every
+ * road until the Bayesian Network arrives in Phase 5. Routing today is flood-
+ * and damage-aware only.
+ */
+export interface RouteCostWeights {
+  flood: number;
+  damage: number;
+  failure: number;
+}
+
+export interface RouteResponse {
+  route: RouteResult;
+  cache: RouteCacheStats;
+  weights: RouteCostWeights;
+}

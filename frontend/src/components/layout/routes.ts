@@ -10,7 +10,6 @@
  * routes as they are built resolves the conflict and makes progress visible.
  *
  * Each phase appends its own entry:
- *   Phase 4  AI Routing
  *   Phase 5  Risk Analysis
  *   Phase 6  AI Reasoning
  *   Phase 7  Resources
@@ -19,7 +18,7 @@
  *   Phase 12 Analytics
  */
 
-import { LayoutDashboard, Map } from "lucide-react";
+import { LayoutDashboard, Map, Route } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface AppRoute {
@@ -33,4 +32,5 @@ export interface AppRoute {
 export const APP_ROUTES: readonly AppRoute[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard, phase: 1 },
   { path: "/map", label: "Disaster Map", icon: Map, phase: 3 },
+  { path: "/routing", label: "AI Routing", icon: Route, phase: 4 },
 ] as const;

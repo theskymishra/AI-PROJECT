@@ -29,7 +29,7 @@ APP_NAME = "AI-DERS"
 APP_FULL_NAME = "AI-Driven Disaster Evacuation & Emergency Response System"
 APP_TAGLINE = "Intelligent emergency response under uncertainty."
 VERSION = "0.1.0"
-CURRENT_PHASE = 2
+CURRENT_PHASE = 4
 TOTAL_PHASES = 14
 API_PREFIX = "/api"
 
@@ -139,6 +139,29 @@ SENSOR_JITTER_WATER_M = 0.06
 SENSOR_JITTER_RAINFALL_MM = 1.2
 
 #: Bounded history retained in memory. This is a simulation, not a database.
+# --------------------------------------------------------------------------
+# Phase 4: A* routing
+# --------------------------------------------------------------------------
+
+#: Disaster-aware edge cost weights.
+#:
+#:     w(e) = distance(e) * (1 + ALPHA*flood + BETA*damage + GAMMA*P_fail)
+#:
+#: All three must stay >= 0: the admissibility proof in ai/search/road_graph.py
+#: depends on the multiplier being >= 1. Raising them is always safe; a
+#: negative value silently breaks A* optimality.
+#:
+#: A road with P_fail = 1 and no flooding costs 4x its length, which is enough
+#: to push traffic onto a route up to four times longer to avoid it.
+COST_WEIGHT_FLOOD = 2.0    # ALPHA
+COST_WEIGHT_DAMAGE = 1.5   # BETA
+COST_WEIGHT_FAILURE = 3.0  # GAMMA
+
+#: PHASE NOTE: GAMMA multiplies road.failure_probability, which is 0.0 on
+#: every road until the Bayesian Network lands in Phase 5. Until then routing
+#: is flood- and damage-aware only. The term is wired and tested with injected
+#: values so Phase 5 is a data change, not a code change.
+
 MAX_TIMELINE_ENTRIES = 200
 MAX_ALERTS = 50
 MAX_SENSOR_HISTORY = 300

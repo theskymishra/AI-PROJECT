@@ -86,7 +86,12 @@ export async function fetchHealth(): Promise<TimedHealth> {
    SSE connection is down.
    ========================================================================== */
 
-import type { ScenarioDetail, SimulationSnapshot } from "@/types";
+import type {
+  RouteRequest,
+  RouteResponse,
+  ScenarioDetail,
+  SimulationSnapshot,
+} from "@/types";
 
 export async function fetchState(): Promise<SimulationSnapshot> {
   const { data } = await api.get<SimulationSnapshot>("/api/simulation/state");
@@ -141,5 +146,23 @@ export interface StreamHealth {
 
 export async function fetchStreamHealth(): Promise<StreamHealth> {
   const { data } = await api.get<StreamHealth>("/api/simulation/stream-health");
+  return data;
+}
+
+/**
+ * Run A* between two nodes against current simulation state.
+ *
+ * `use_cache: false` by default here: the UI shows nodes-expanded and
+ * execution time, and a cache hit would report the metrics of whichever
+ * earlier call populated the entry. Showing borrowed metrics as if they were
+ * this search's would be exactly the kind of faked AI output the brief bans.
+ */
+export async function requestRoute(
+  request: RouteRequest,
+): Promise<RouteResponse> {
+  const { data } = await api.post<RouteResponse>("/api/ai/route", {
+    use_cache: false,
+    ...request,
+  });
   return data;
 }

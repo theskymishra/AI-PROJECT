@@ -7,14 +7,28 @@
 > emergency-management system. No output it produces should be used to make real
 > emergency decisions.
 
-**Current build: Phase 3 of 14 — Disaster Map.**
+**Current build: Phase 4 of 14 — A\* Routing.**
 
 ---
 
 ## What exists right now
 
-Phases 1 to 3. There is no AI yet — search, CSP, probabilistic reasoning and
-planning arrive in Phases 4 through 8. What works today:
+Phases 1 to 4. The first AI technique is in: A\* search. CSP, probabilistic
+reasoning and planning arrive in Phases 5 through 8. What works today:
+
+**Phase 4 — A\* routing**
+
+- Generic A\* written from scratch, reused by Phase 8's planner
+- Disaster-aware edge cost: `distance × (1 + 2·flood + 1.5·damage + 3·P_fail)`
+- Admissible and consistent heuristic, with the proof resting on world invariant W1
+- **Optimality verified against Floyd–Warshall on all 552 ordered node pairs**
+- Route cache keyed `(start, goal, environment_version)`
+- `POST /api/ai/route` with real expansion metrics
+- AI Routing page: route overlay on the map, step-through search animation
+
+> **P(failure) is 0.0 on every road until Phase 5.** The gamma term is wired
+> and tested with injected values, but routing today is flood- and
+> damage-aware only. Do not describe it as "avoids roads likely to fail" yet.
 
 **Phase 3 — disaster map**
 
@@ -23,7 +37,7 @@ planning arrive in Phases 4 through 8. What works today:
 - Zones, roads, hospitals, shelters, ambulances, emergencies, flood shading
 - Live road status (SAFE / RISKY / BLOCKED) by colour *and* dash pattern
 - One map component in two modes: interactive page, static dashboard embed
-- 58 frontend tests (Vitest + jsdom)
+- 81 frontend tests (Vitest + jsdom)
 
 **Phase 2 — simulation core**
 
@@ -44,7 +58,7 @@ planning arrive in Phases 4 through 8. What works today:
 - Live backend connection monitoring with specific, actionable error states
 - The **frozen data contract**: Pydantic models and their TypeScript mirror
 - The deterministic `patients` derivation rule, with tests
-- 255 backend tests
+- 331 backend tests
 
 The dashboard shows connection status and backend build information — the things
 that are genuinely real at this stage. There are deliberately no statistic cards
@@ -199,7 +213,7 @@ cd backend
 python -m pytest
 ```
 
-Expected: `255 passed`.
+Expected: `331 passed`.
 
 Warnings are promoted to errors (`-W error` in `pytest.ini`). A warning nobody
 fixes is a warning everybody learns to ignore, and that is how a real one gets
@@ -217,7 +231,7 @@ python -m pytest app/tests/unit/test_patients_rule.py # one file
 ```bash
 cd frontend
 npm run typecheck    # tsc --noEmit
-npm test             # vitest run  -> 58 tests
+npm test             # vitest run  -> 81 tests
 npm run build        # typecheck, then tests, then production build
 ```
 
@@ -227,7 +241,7 @@ error nor a failing test can produce a build.
 ### Integration (both servers must be running)
 
 ```bash
-node scripts/verify_contract.mjs   # 54 live API + SSE contract checks
+node scripts/verify_contract.mjs   # 72 live API, SSE and routing checks
 ./scripts/verify_sse.sh            # SSE headers, frames, subscriber cleanup
 ```
 
@@ -295,7 +309,9 @@ ai-ders/
 │   └── app/
 │       ├── main.py            app factory, CORS, lifespan
 │       ├── config.py          every tuning constant, one place
-│       ├── api/health.py      the only endpoint in Phase 1
+│       ├── ai/search/         astar.py (generic), road_graph.py (adapter)
+│       ├── api/                health, simulation, disaster, emergencies,
+│       │                       resources, stream, ai
 │       ├── models/            FROZEN CONTRACT — Pydantic
 │       └── tests/unit/        60 tests
 └── frontend/
@@ -313,7 +329,9 @@ ai-ders/
         ├── hooks/             useBackendHealth
         ├── components/layout/ AppLayout, Sidebar, Header, StatusBadge, routes
         ├── components/map/     DisasterMap, geometry, Legend, Controls, Detail
-        └── pages/              Dashboard, DisasterMapPage
+        ├── components/routing/ RoutePanel, SearchVisualizer
+        ├── hooks/              useBackendHealth, useSearchPlayback
+        └── pages/              Dashboard, DisasterMapPage, RoutingPage
 ```
 
 ### The frozen contract
@@ -392,8 +410,8 @@ Use `py -3` instead, as shown in the commands above.
 | 1 | Foundation, frozen contract | **complete** |
 | 2 | Simulation core, tick clock, SSE | **complete** |
 | 3 | Interactive disaster map | **complete** |
-| 4 | A\* routing, route cache | next |
-| 5 | HMM + Bayesian Network, risk-driven rerouting |  |
+| 4 | A\* routing, route cache | **complete** |
+| 5 | HMM + Bayesian Network, risk-driven rerouting | next |
 | 6 | Knowledge engine, forward chaining, FOL |  |
 | 7 | CSP resource allocation |  |
 | 8 | Classical and hierarchical planning |  |
