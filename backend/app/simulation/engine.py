@@ -25,6 +25,8 @@ from app.config import ALLOWED_SPEEDS, TICK_POLL_SECONDS, settings
 from app.models.common import SimStatus
 from app.models.events import SimEvent
 from app.services.broadcast import Broadcaster
+from app.services.risk_service import risk_service
+from app.services.routing_service import routing_service
 from app.simulation import sensors
 from app.simulation.events import EventError, apply_event
 from app.simulation.scenarios import DEFAULT_SCENARIO, SCENARIOS, get_scenario
@@ -70,6 +72,12 @@ class SimulationEngine:
         name = scenario or self.state.scenario
         get_scenario(name)  # raises KeyError before we destroy anything
         self.state = WorldState.create(name, self._world)
+        # The HMM is a filter carrying belief across ticks, so it must be
+        # returned to its prior with the world. Leaving it would make a reset
+        # run start from whatever the previous scenario had concluded, and the
+        # reproducibility guarantee in Phase 0 section 3 would be false.
+        risk_service.reset()
+        routing_service.clear_cache()
         self._publish_control("reset")
 
     def set_speed(self, speed: int) -> None:
@@ -108,6 +116,17 @@ class SimulationEngine:
                 emergencies_changed.append(outcome.emergency_id)
 
         sensors.advance_environment(state, self.seed)
+
+        # PHASE 5: sensors -> HMM -> Bayesian Network -> road.failure_probability.
+        #
+        # Runs every tick and BEFORE version reconciliation, because the
+        # probabilities written here are one of the things that decides
+        # whether cached routes are still valid.
+        #
+        # This is the link that connects Module 6 (probabilistic reasoning) to
+        # Module 2 (informed search): the number written onto each road is the
+        # ONLY risk input A* consumes.
+        risk_service.assess(state)
 
         roads_changed = state.reconcile_environment_version()
 

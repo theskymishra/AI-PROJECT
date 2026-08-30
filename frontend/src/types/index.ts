@@ -556,3 +556,59 @@ export interface RouteResponse {
   cache: RouteCacheStats;
   weights: RouteCostWeights;
 }
+
+/* ==========================================================================
+   Phase 5 — HMM and Bayesian Network
+   ========================================================================== */
+
+export interface HMMRequest {
+  /**
+   * Optional sequence to filter from the prior. Omit to read the LIVE filter.
+   * Supplying one runs a throwaway filter and never disturbs the live belief.
+   */
+  observations?: Observation[];
+}
+
+export interface HMMResponse {
+  belief: Record<FloodState, number>;
+  most_likely: FloodState;
+  /** Shannon entropy in bits, 0 (certain) to 2 (uniform over four states). */
+  entropy: number;
+  /** P(o_t | o_1..o_t-1). Sustained low values mean the model is surprised. */
+  step_likelihood: number;
+  observation_history: Observation[];
+  /** One row per tick, ordered as `states`. */
+  belief_history: number[][];
+  states: FloodState[];
+  live: boolean;
+  execution_ms: number;
+}
+
+export type EvidenceBand = "LOW" | "MED" | "HIGH";
+
+export interface BayesianRequest {
+  rainfall?: EvidenceBand;
+  water_level?: EvidenceBand;
+  /**
+   * False detaches the HMM's virtual evidence, leaving the
+   * Rainfall -> WaterLevel -> FloodSeverity chain to speak for itself.
+   */
+  use_hmm?: boolean;
+}
+
+export interface RiskiestRoad {
+  road_id: RoadId;
+  probability: number;
+  elevation_band: ElevationBand;
+}
+
+export interface BayesianResponse {
+  flood_severity: Record<FloodState, number>;
+  water_level: Record<EvidenceBand, number>;
+  rainfall: Record<EvidenceBand, number>;
+  per_road: Record<RoadId, number>;
+  evidence: { Rainfall: EvidenceBand; WaterLevel: EvidenceBand };
+  used_hmm_virtual_evidence: boolean;
+  execution_ms: number;
+  riskiest_roads: RiskiestRoad[];
+}

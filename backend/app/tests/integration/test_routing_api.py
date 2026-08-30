@@ -53,9 +53,15 @@ class TestHappyPath:
         assert body["path"][-1] == "N18"
 
     def test_cost_weights_are_exposed(self, client):
+        """The shipped weights: inferred risk only.
+
+        flood and damage are zero because both are environment ground truth
+        AND already inputs to the Bayesian Network; reading them in the cost
+        function would bypass the inference chain and double-count them.
+        """
         weights = route(client).json()["weights"]
-        assert weights["flood"] == 2.0
-        assert weights["damage"] == 1.5
+        assert weights["flood"] == 0.0
+        assert weights["damage"] == 0.0
         assert weights["failure"] == 3.0
 
     def test_cache_statistics_are_exposed(self, client):

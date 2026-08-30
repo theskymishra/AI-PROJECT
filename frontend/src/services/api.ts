@@ -87,6 +87,10 @@ export async function fetchHealth(): Promise<TimedHealth> {
    ========================================================================== */
 
 import type {
+  BayesianRequest,
+  BayesianResponse,
+  HMMRequest,
+  HMMResponse,
   RouteRequest,
   RouteResponse,
   ScenarioDetail,
@@ -164,5 +168,19 @@ export async function requestRoute(
     use_cache: false,
     ...request,
   });
+  return data;
+}
+
+/** Read the live HMM filter, or filter a supplied sequence from the prior. */
+export async function requestHMM(request: HMMRequest = {}): Promise<HMMResponse> {
+  const { data } = await api.post<HMMResponse>("/api/ai/hmm", request);
+  return data;
+}
+
+/** Run Bayesian inference. Omit evidence for live sensor readings. */
+export async function requestBayesian(
+  request: BayesianRequest = {},
+): Promise<BayesianResponse> {
+  const { data } = await api.post<BayesianResponse>("/api/ai/bayesian", request);
   return data;
 }

@@ -7,14 +7,38 @@
 > emergency-management system. No output it produces should be used to make real
 > emergency decisions.
 
-**Current build: Phase 4 of 14 — A\* Routing.**
+**Current build: Phase 5 of 14 — Probabilistic Reasoning.**
 
 ---
 
 ## What exists right now
 
-Phases 1 to 4. The first AI technique is in: A\* search. CSP, probabilistic
-reasoning and planning arrive in Phases 5 through 8. What works today:
+Phases 1 to 5. Three AI techniques are live: A\* search, a Hidden Markov
+Model and a Bayesian Network, connected into one pipeline. CSP, the knowledge
+engine and planning arrive in Phases 6 through 8. What works today:
+
+**Phase 5 — probabilistic reasoning**
+
+- Hidden Markov Model, forward algorithm with per-step normalisation (filtering)
+- Bayesian Network with **two live pathways** to every road, exact enumeration
+- HMM belief enters as **Pearl virtual evidence** on FloodSeverity
+- `P(RoadFailure)` via **noisy-OR**: 11 parameters instead of 36 CPT rows
+- The full chain runs every tick: sensors → HMM → BN → `road.failure_probability` → A\* cost
+- `POST /api/ai/hmm` and `POST /api/ai/bayesian`, with a what-if mode that detaches the HMM
+- Risk Analysis page: belief bars, belief-over-time chart, network diagram, sensor charts
+
+> **Cost model change.** The A\* risk weights are now `α=0, β=0, γ=3`: the
+> Bayesian Network's inferred `P(failure)` is the *only* risk input. Raw
+> `flood_level` and `damage_level` are environment ground truth **and** already
+> inputs to the network, so reading them in the cost function would bypass the
+> inference chain and double-count the evidence. With `α=2.0` the two terms were
+> collinear and the network changed no route across all 552 node pairs.
+
+> **Route cache is intra-tick.** The HMM belief updates on every noisy
+> observation, so `P(failure)` legitimately moves each tick and a route costed
+> under old probabilities is genuinely stale. The cache serves repeat queries
+> within one tick — which is what Phase 7's CSP needs — and invalidates across
+> them.
 
 **Phase 4 — A\* routing**
 
@@ -37,7 +61,7 @@ reasoning and planning arrive in Phases 5 through 8. What works today:
 - Zones, roads, hospitals, shelters, ambulances, emergencies, flood shading
 - Live road status (SAFE / RISKY / BLOCKED) by colour *and* dash pattern
 - One map component in two modes: interactive page, static dashboard embed
-- 81 frontend tests (Vitest + jsdom)
+- 96 frontend tests (Vitest + jsdom)
 
 **Phase 2 — simulation core**
 
@@ -58,7 +82,7 @@ reasoning and planning arrive in Phases 5 through 8. What works today:
 - Live backend connection monitoring with specific, actionable error states
 - The **frozen data contract**: Pydantic models and their TypeScript mirror
 - The deterministic `patients` derivation rule, with tests
-- 331 backend tests
+- 437 backend tests
 
 The dashboard shows connection status and backend build information — the things
 that are genuinely real at this stage. There are deliberately no statistic cards
@@ -213,7 +237,7 @@ cd backend
 python -m pytest
 ```
 
-Expected: `331 passed`.
+Expected: `437 passed`.
 
 Warnings are promoted to errors (`-W error` in `pytest.ini`). A warning nobody
 fixes is a warning everybody learns to ignore, and that is how a real one gets
@@ -231,7 +255,7 @@ python -m pytest app/tests/unit/test_patients_rule.py # one file
 ```bash
 cd frontend
 npm run typecheck    # tsc --noEmit
-npm test             # vitest run  -> 81 tests
+npm test             # vitest run  -> 96 tests
 npm run build        # typecheck, then tests, then production build
 ```
 
@@ -241,7 +265,7 @@ error nor a failing test can produce a build.
 ### Integration (both servers must be running)
 
 ```bash
-node scripts/verify_contract.mjs   # 72 live API, SSE and routing checks
+node scripts/verify_contract.mjs   # 103 live API, SSE, routing and risk checks
 ./scripts/verify_sse.sh            # SSE headers, frames, subscriber cleanup
 ```
 
@@ -310,6 +334,7 @@ ai-ders/
 │       ├── main.py            app factory, CORS, lifespan
 │       ├── config.py          every tuning constant, one place
 │       ├── ai/search/         astar.py (generic), road_graph.py (adapter)
+│       ├── ai/probability/    hmm.py, bayesian.py
 │       ├── api/                health, simulation, disaster, emergencies,
 │       │                       resources, stream, ai
 │       ├── models/            FROZEN CONTRACT — Pydantic
@@ -330,8 +355,10 @@ ai-ders/
         ├── components/layout/ AppLayout, Sidebar, Header, StatusBadge, routes
         ├── components/map/     DisasterMap, geometry, Legend, Controls, Detail
         ├── components/routing/ RoutePanel, SearchVisualizer
+        ├── components/probability/ HMMPanel, BeliefChart, BayesianNetwork,
+        │                           SensorCharts
         ├── hooks/              useBackendHealth, useSearchPlayback
-        └── pages/              Dashboard, DisasterMapPage, RoutingPage
+        └── pages/              Dashboard, DisasterMapPage, RoutingPage, RiskPage
 ```
 
 ### The frozen contract
@@ -411,8 +438,8 @@ Use `py -3` instead, as shown in the commands above.
 | 2 | Simulation core, tick clock, SSE | **complete** |
 | 3 | Interactive disaster map | **complete** |
 | 4 | A\* routing, route cache | **complete** |
-| 5 | HMM + Bayesian Network, risk-driven rerouting | next |
-| 6 | Knowledge engine, forward chaining, FOL |  |
+| 5 | HMM + Bayesian Network, risk-driven rerouting | **complete** |
+| 6 | Knowledge engine, forward chaining, FOL | next |
 | 7 | CSP resource allocation |  |
 | 8 | Classical and hierarchical planning |  |
 | 9 | Full pipeline integration, automatic replanning |  |

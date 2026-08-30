@@ -41,11 +41,19 @@ from app.models.road import Road
 from app.simulation.engine import SimulationEngine
 from app.simulation.world import build_world
 
+#: The weights the application actually ships with: the Bayesian Network's
+#: inferred P(failure) is the only risk input.
 WEIGHTS = {
     "alpha": COST_WEIGHT_FLOOD,
     "beta": COST_WEIGHT_DAMAGE,
     "gamma": COST_WEIGHT_FAILURE,
 }
+
+#: Non-zero weights used ONLY to exercise the flood and damage terms of
+#: edge_cost(). Those terms are retired in the shipped configuration, but the
+#: arithmetic is still part of the function and a test asserting it against
+#: alpha=0 would pass while asserting nothing.
+ALL_TERMS = {"alpha": 2.0, "beta": 1.5, "gamma": 3.0}
 
 
 def make_road(**overrides) -> Road:
@@ -72,19 +80,41 @@ class TestEdgeCost:
         assert edge_cost(road, **WEIGHTS) == pytest.approx(10.0)
 
     def test_flooding_raises_the_cost_by_alpha_times_flood_level(self):
+        """Exercises the alpha term with an explicit weight; it is retired in
+        the shipped configuration but is still part of the function."""
         road = make_road(flood_level=0.5)
-        expected = 10.0 * (1 + COST_WEIGHT_FLOOD * 0.5)
-        assert edge_cost(road, **WEIGHTS) == pytest.approx(expected)
+        expected = 10.0 * (1 + 2.0 * 0.5)
+        assert edge_cost(road, **ALL_TERMS) == pytest.approx(expected)
 
     def test_damage_raises_the_cost_by_beta_times_damage_level(self):
         road = make_road(damage_level=0.4)
-        expected = 10.0 * (1 + COST_WEIGHT_DAMAGE * 0.4)
-        assert edge_cost(road, **WEIGHTS) == pytest.approx(expected)
+        expected = 10.0 * (1 + 1.5 * 0.4)
+        assert edge_cost(road, **ALL_TERMS) == pytest.approx(expected)
+
+    def test_shipped_weights_retire_flood_and_damage(self):
+        """The Phase 5 architectural decision, asserted rather than assumed.
+
+        road.flood_level and road.damage_level are environment ground truth AND
+        already inputs to the Bayesian Network. Reading them directly in the
+        cost function would bypass the inference chain and double-count the
+        evidence. Only the inferred P(failure) may move the cost.
+        """
+        assert COST_WEIGHT_FLOOD == 0.0
+        assert COST_WEIGHT_DAMAGE == 0.0
+        assert COST_WEIGHT_FAILURE > 0.0
+
+        soaked = make_road(flood_level=1.0, damage_level=1.0)
+        assert edge_cost(soaked, **WEIGHTS) == pytest.approx(soaked.distance), (
+            "raw flood/damage must not reach the cost function"
+        )
+
+        risky = make_road(failure_probability=1.0)
+        assert edge_cost(risky, **WEIGHTS) == pytest.approx(
+            soaked.distance * (1 + COST_WEIGHT_FAILURE)
+        )
 
     def test_failure_probability_raises_the_cost_by_gamma(self):
-        """The Phase 5 term. Zero in live data today, so it is tested with an
-        injected value -- otherwise the wiring would go unverified until the
-        Bayesian Network lands and any bug would surface then."""
+        """The only live risk term from Phase 5 onward."""
         road = make_road(failure_probability=1.0)
         expected = 10.0 * (1 + COST_WEIGHT_FAILURE)
         assert edge_cost(road, **WEIGHTS) == pytest.approx(expected)
@@ -92,25 +122,25 @@ class TestEdgeCost:
 
     def test_the_three_terms_are_additive(self):
         road = make_road(flood_level=0.5, damage_level=0.4, failure_probability=0.2)
-        expected = 10.0 * (
-            1
-            + COST_WEIGHT_FLOOD * 0.5
-            + COST_WEIGHT_DAMAGE * 0.4
-            + COST_WEIGHT_FAILURE * 0.2
-        )
-        assert edge_cost(road, **WEIGHTS) == pytest.approx(expected)
+        expected = 10.0 * (1 + 2.0 * 0.5 + 1.5 * 0.4 + 3.0 * 0.2)
+        assert edge_cost(road, **ALL_TERMS) == pytest.approx(expected)
 
     def test_cost_is_never_below_the_road_length(self):
-        """The inequality the admissibility proof rests on."""
-        for flood in (0.0, 0.3, 1.0):
-            for damage in (0.0, 0.5, 1.0):
-                for pfail in (0.0, 0.7, 1.0):
-                    road = make_road(
-                        flood_level=flood,
-                        damage_level=damage,
-                        failure_probability=pfail,
-                    )
-                    assert edge_cost(road, **WEIGHTS) >= road.distance
+        """The inequality the admissibility proof rests on.
+
+        Checked under BOTH the shipped weights and a fully-loaded set, because
+        admissibility must survive any future reweighting.
+        """
+        for weights in (WEIGHTS, ALL_TERMS):
+            for flood in (0.0, 0.3, 1.0):
+                for damage in (0.0, 0.5, 1.0):
+                    for pfail in (0.0, 0.7, 1.0):
+                        road = make_road(
+                            flood_level=flood,
+                            damage_level=damage,
+                            failure_probability=pfail,
+                        )
+                        assert edge_cost(road, **weights) >= road.distance
 
     def test_negative_weights_are_rejected(self):
         with pytest.raises(ValueError, match="non-negative"):
@@ -336,12 +366,22 @@ class TestOptimalityAgainstOracle:
 
 
 class TestAgainstLiveState:
-    def test_flooding_makes_routes_more_expensive_than_their_length(self):
+    def test_inferred_risk_makes_routes_more_expensive_than_their_length(self):
+        """Cost exceeds distance because the Bayesian Network says so.
+
+        With alpha = beta = 0 the ONLY way this can pass is if
+        road.failure_probability is non-zero -- which means the HMM and the
+        Bayesian Network actually ran and wrote to the world.
+        """
         engine = SimulationEngine()
         engine.set_scenario("SEVERE_FLOOD")
         engine.advance(200)
 
         state = engine.state
+        assert any(r.failure_probability > 0 for r in state.roads.values()), (
+            "the Bayesian Network did not write any failure probabilities"
+        )
+
         graph = RoadGraph(nodes=state.world.node_by_id, roads=state.roads, **WEIGHTS)
         result = astar(
             "N1", graph.successors, lambda n: n == "N17", graph.heuristic_to("N17")
@@ -349,10 +389,7 @@ class TestAgainstLiveState:
         assert result.found
 
         plain_km = sum(state.roads[str(e)].distance for e in result.edges)
-        assert result.total_cost > plain_km, (
-            "with the flood plain under water the risk-weighted cost must "
-            "exceed the plain distance"
-        )
+        assert result.total_cost > plain_km
 
     def test_blocking_the_bridge_changes_the_route(self):
         """R17 is the only direct Riverside-Midtown link by design."""
