@@ -184,3 +184,21 @@ export async function requestBayesian(
   const { data } = await api.post<BayesianResponse>("/api/ai/bayesian", request);
   return data;
 }
+
+/* ==========================================================================
+   Phase 6 -- symbolic knowledge engine
+   ========================================================================== */
+
+import type { FOLResult, InferenceRequest, InferenceResult } from "@/types";
+
+export async function requestInference(
+  request: InferenceRequest = {},
+): Promise<InferenceResult> {
+  const { data } = await api.post<InferenceResult>("/api/ai/infer", request);
+  return data;
+}
+
+export async function requestFOL(query: string): Promise<FOLResult> {
+  const { data } = await api.post<FOLResult>("/api/ai/fol", { query });
+  return data;
+}

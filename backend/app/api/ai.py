@@ -50,10 +50,19 @@ class RouteResponse(BaseModel):
 )
 def post_route(request: RouteRequest) -> RouteResponse:
     try:
+        # Phase 6 symbolic reasoning derives Avoid(R) from HighFailureProb(R)
+        # and Blocked(R). The routing service keeps this as a soft penalty; a
+        # blocked road remains a hard exclusion in RoadGraph.
+        knowledge = build_knowledge_base(engine.state)
+        knowledge.infer()
+        unsafe = frozenset(
+            fact.args[0] for fact in knowledge.facts if fact.predicate == "Avoid"
+        )
         route = routing_service.route(
             engine.state,
             request.start,
             request.goal,
+            avoid=unsafe,
             use_cache=request.use_cache,
         )
     except KeyError as exc:
@@ -237,3 +246,50 @@ def post_bayesian(request: BayesianRequest) -> BayesianResponse:
         execution_ms=result.execution_ms,
         riskiest_roads=riskiest,
     )
+
+# ---------------------------------------------------------------------------
+# Phase 6 -- symbolic knowledge engine
+# ---------------------------------------------------------------------------
+
+from app.ai.knowledge.knowledge_base import build_knowledge_base
+from app.ai.knowledge.parser import parse_atom, parse_conjunction
+from app.models.ai_result import FOLResult, InferenceResult
+
+
+class InferenceRequest(BaseModel):
+    """Optional extra facts for a what-if inference run."""
+
+    facts: list[str] = Field(default_factory=list, description="Facts such as HighFailureProb(R17).")
+
+
+class FOLRequest(BaseModel):
+    query: str = Field(description="Positive conjunctive query, e.g. Unsafe(R) or Unsafe(R) & Road(R).")
+
+
+@router.post(
+    "/ai/infer",
+    response_model=InferenceResult,
+    summary="Forward-chain the live symbolic knowledge base",
+)
+def post_infer(request: InferenceRequest) -> InferenceResult:
+    kb = build_knowledge_base(engine.state)
+    for raw in request.facts:
+        try:
+            kb.add_fact(parse_atom(raw))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return kb.infer()
+
+
+@router.post(
+    "/ai/fol",
+    response_model=FOLResult,
+    summary="Run a positive conjunctive first-order query",
+)
+def post_fol(request: FOLRequest) -> FOLResult:
+    try:
+        patterns = parse_conjunction(request.query)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    kb = build_knowledge_base(engine.state)
+    return kb.query(patterns)

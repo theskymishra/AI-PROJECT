@@ -534,6 +534,25 @@ async function main() {
   check("inferred probabilities are written onto the world",
     Object.entries(bn.per_road).every(([id, p]) => Math.abs(p - worldRisk[id]) < 0.02));
 
+  console.log("\n[Knowledge Engine / Forward Chaining / FOL]");
+  const inference = (await api.post("/api/ai/infer", {})).body;
+  hasKeys(inference, ["initial_facts", "derived_facts", "steps", "iterations", "execution_ms"],
+    "InferenceResult shape");
+  check("HighFailureProb is represented symbolically",
+    inference.initial_facts.includes("HighFailureProb(R17)"));
+  check("forward chaining derives Unsafe(R17)",
+    inference.derived_facts.includes("Unsafe(R17)"));
+  check("forward chaining derives Avoid(R17)",
+    inference.derived_facts.includes("Avoid(R17)"));
+  check("inference trace contains rule firings", inference.steps.length > 0);
+  const fol = (await api.post("/api/ai/fol",
+    { query: "Unsafe(R) & Road(R)" })).body;
+  hasKeys(fol, ["query", "bindings", "count", "execution_ms"], "FOLResult shape");
+  check("FOL query binds the risky bridge",
+    fol.bindings.some((row) => row.R === "R17"));
+  check("invalid FOL is rejected with 422",
+    (await api.post("/api/ai/fol", { query: "not an atom" })).status === 422);
+
   console.log("\n[Demo A -- risk-based rerouting, no road blocked]");
   check("no road is blocked at the demo tick",
     state145.roads.every((r) => !r.blocked));

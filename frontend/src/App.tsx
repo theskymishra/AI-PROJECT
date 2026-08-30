@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Dashboard } from "@/pages/Dashboard";
 import { DisasterMapPage } from "@/pages/DisasterMapPage";
 import { RiskPage } from "@/pages/RiskPage";
+import { ReasoningPage } from "@/pages/ReasoningPage";
 import { RoutingPage } from "@/pages/RoutingPage";
 
 export function App() {
@@ -21,6 +22,7 @@ export function App() {
         <Route path="map" element={<DisasterMapPage />} />
         <Route path="routing" element={<RoutingPage />} />
         <Route path="risk" element={<RiskPage />} />
+        <Route path="reasoning" element={<ReasoningPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

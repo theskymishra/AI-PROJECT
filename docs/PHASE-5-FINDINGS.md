@@ -1,12 +1,13 @@
 # PHASE 5 — FINDINGS AND TWO BLOCKING DECISIONS
 
-**Status: PARTIAL.** The HMM and Bayesian Network are built, unit-tested and
-verified in isolation. They are **not wired into the tick loop**, because
-switching them on causes two measured problems that change approved
-architecture. Both need a decision.
+**Status: COMPLETE.** The two Phase 5 decisions were resolved as alpha=0, beta=0,
+gamma=3 and an intra-tick cache model. The HMM and Bayesian Network are wired
+into the live simulation, risk-driven rerouting is verified, and the two demo
+scenarios pass.
 
-Suite is green at 398 backend / 81 frontend. Nothing is broken. Nothing is
-faked.
+The original investigation recorded 398 backend / 81 frontend checks before
+the final wiring. The final Phase 5 suite grew to 437 backend / 96 frontend,
+with the contract and SSE harnesses also extended. Nothing was faked.
 
 ---
 
@@ -16,7 +17,7 @@ faked.
 |---|---|
 | `ai/probability/hmm.py` — forward algorithm, filtering | built, 24 tests |
 | `ai/probability/bayesian.py` — two-pathway BN, virtual evidence, noisy-OR | built, 33 tests |
-| `services/risk_service.py` — sensors → HMM → BN → `road.failure_probability` | built, **not wired** |
+| `services/risk_service.py` — sensors → HMM → BN → `road.failure_probability` | built and wired |
 | HMM/BN parameters in `config.py` | all 29 distributions normalise |
 | Noisy-OR anchors | 0.039 / 0.695 / 0.967 — match Phase 0 exactly |
 
@@ -161,7 +162,7 @@ do without you agreeing, because that test encodes a Phase 0 design decision.
 
 ---
 
-## What remains for Phase 5 once decided
+## Historical checklist before the final Phase 5 decision
 
 - Wire `risk_service` into `step()` (one line, already written and commented
   in place at `engine.py`)
@@ -171,8 +172,8 @@ do without you agreeing, because that test encodes a Phase 0 design decision.
 - Demo A and Demo B integration tests
 - Extend `verify_contract.mjs` with both demos
 
-None of that is blocked on anything except these two decisions. All of it is
-mechanical once the cost model is settled.
+Those items were subsequently implemented in the final Phase 5 pass. The
+remaining work is now Phase 6 and later roadmap work.
 
 ---
 
@@ -183,3 +184,17 @@ routing — and the reason is a cost-model design flaw inherited from Phase 4,
 not a defect in the HMM or the Bayesian Network. Discovering it now, with
 measurements, is better than discovering it in a viva when someone asks what
 the Bayesian Network actually does.
+
+
+## Final Phase 5 resolution
+
+- Cost model: `alpha=0`, `beta=0`, `gamma=3`. The Bayesian Network's inferred
+  failure probability is the only risk input to A*.
+- Cache: intra-tick semantics. Cross-tick reuse is invalidated by material
+  road-risk changes.
+- Demo A: risk-aware rerouting without blocking a road is load-bearing and
+  reproducible.
+- Demo B: hard road failure excludes the blocked road and produces a different
+  route.
+- The Phase 6 knowledge engine now consumes the `P(failure)` output and derives
+  symbolic `HighFailureProb`, `Unsafe` and `Avoid` facts.

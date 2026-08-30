@@ -29,7 +29,7 @@ APP_NAME = "AI-DERS"
 APP_FULL_NAME = "AI-Driven Disaster Evacuation & Emergency Response System"
 APP_TAGLINE = "Intelligent emergency response under uncertainty."
 VERSION = "0.1.0"
-CURRENT_PHASE = 5
+CURRENT_PHASE = 6
 TOTAL_PHASES = 14
 API_PREFIX = "/api"
 
@@ -178,6 +178,16 @@ SENSOR_JITTER_RAINFALL_MM = 1.2
 COST_WEIGHT_FLOOD = 0.0    # ALPHA -- retired, see above
 COST_WEIGHT_DAMAGE = 0.0   # BETA  -- retired, see above
 COST_WEIGHT_FAILURE = 3.0  # GAMMA -- the inferred risk term
+
+
+# --------------------------------------------------------------------------
+# Phase 6: symbolic knowledge engine
+# --------------------------------------------------------------------------
+
+#: Roads at or above this inferred failure probability become the symbolic
+#: HighFailureProb(R) fact.  The value is deliberately the same 0.6 threshold
+#: consumed by the Phase 7 CSP and documented in the Phase 5 hand-off.
+KNOWLEDGE_HIGH_FAILURE_THRESHOLD = 0.60
 
 # --------------------------------------------------------------------------
 # Phase 5: Hidden Markov Model

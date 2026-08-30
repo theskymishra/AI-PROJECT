@@ -2,7 +2,7 @@
 
 THE CACHE
 ---------
-    key = (start_node_id, goal_node_id, environment_version)
+    key = (start_node_id, goal_node_id, environment_version, avoid_roads)
 
 ``environment_version`` is monotonic and lives on WorldState. An entry whose
 key does not match the CURRENT version can never be read, so a stale route is
@@ -43,7 +43,7 @@ from app.models.ai_result import RouteResult
 from app.simulation.state import WorldState
 
 #: (start, goal, environment_version)
-CacheKey = tuple[str, str, int]
+CacheKey = tuple[str, str, int, tuple[str, ...]]
 
 
 @dataclass
@@ -145,14 +145,12 @@ class RoutingService:
         version = state.environment_version
         self._purge_if_stale(version)
 
-        # The `avoid` set is not part of the cache key: it is derived from the
-        # knowledge base, which only changes when the environment does, and
-        # the environment change already bumps the version. Caching across
-        # different avoid sets at the same version would be wrong, so
-        # non-empty avoid sets bypass the cache entirely until Phase 6 makes
-        # the relationship explicit.
-        cacheable = use_cache and not avoid
-        key: CacheKey = (start, goal, version)
+        # Phase 6 makes symbolic Avoid(R) part of the routing decision. Include
+        # it in the cache key so two logically different searches can never
+        # share a result. The avoid set is derived from road state, and any
+        # relevant road-state change already advances environment_version.
+        cacheable = use_cache
+        key: CacheKey = (start, goal, version, tuple(sorted(avoid)))
 
         if cacheable and key in self._cache:
             self.stats.hits += 1

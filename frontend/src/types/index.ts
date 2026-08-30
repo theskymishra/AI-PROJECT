@@ -360,6 +360,10 @@ export interface InferenceStep {
   conclusion: string;
 }
 
+export interface InferenceRequest {
+  facts?: string[];
+}
+
 export interface InferenceResult {
   initial_facts: string[];
   derived_facts: string[];
