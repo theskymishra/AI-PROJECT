@@ -616,3 +616,11 @@ export interface BayesianResponse {
   execution_ms: number;
   riskiest_roads: RiskiestRoad[];
 }
+
+/* ========================================================================
+   Phase 7 -- resource allocation request
+   ======================================================================== */
+export interface AllocationRequest {
+  /** Preview by default. Set true to commit assignments to live state. */
+  apply?: boolean;
+}

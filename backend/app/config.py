@@ -29,7 +29,7 @@ APP_NAME = "AI-DERS"
 APP_FULL_NAME = "AI-Driven Disaster Evacuation & Emergency Response System"
 APP_TAGLINE = "Intelligent emergency response under uncertainty."
 VERSION = "0.1.0"
-CURRENT_PHASE = 6
+CURRENT_PHASE = 7
 TOTAL_PHASES = 14
 API_PREFIX = "/api"
 

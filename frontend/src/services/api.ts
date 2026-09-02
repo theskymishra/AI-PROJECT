@@ -202,3 +202,15 @@ export async function requestFOL(query: string): Promise<FOLResult> {
   const { data } = await api.post<FOLResult>("/api/ai/fol", { query });
   return data;
 }
+
+/* ========================================================================
+   Phase 7 -- CSP resource allocation
+   ======================================================================== */
+import type { AllocationRequest, CSPResult } from "@/types";
+
+export async function requestAllocation(
+  request: AllocationRequest = {},
+): Promise<CSPResult> {
+  const { data } = await api.post<CSPResult>("/api/ai/allocate", request);
+  return data;
+}
