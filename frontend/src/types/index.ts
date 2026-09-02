@@ -624,3 +624,33 @@ export interface AllocationRequest {
   /** Preview by default. Set true to commit assignments to live state. */
   apply?: boolean;
 }
+
+
+/* ==========================================================================
+   Phase 9 -- Dempster-Shafer evidence fusion contracts
+   ========================================================================== */
+
+export interface EvidenceRequest {
+  max_sources?: number;
+}
+
+export interface EvidenceSource {
+  source_id: SensorId;
+  tick: number;
+  observation: Observation;
+  reliability: number;
+  masses: Record<string, number>;
+}
+
+export interface EvidenceResult {
+  status: string;
+  frame: string[];
+  sources: EvidenceSource[];
+  combined_masses: Record<string, number>;
+  belief: Record<string, number>;
+  plausibility: Record<string, number>;
+  pignistic: Record<string, number>;
+  conflict: number;
+  evidence_count: number;
+  execution_ms: number;
+}

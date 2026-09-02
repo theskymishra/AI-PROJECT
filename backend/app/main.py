@@ -15,6 +15,7 @@ from app.api import (
     ai,
     allocation,
     planning,
+    evidence,
     disaster,
     emergencies,
     health,
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(ai.router, prefix=settings.api_prefix)
     app.include_router(allocation.router, prefix=settings.api_prefix)
     app.include_router(planning.router, prefix=settings.api_prefix)
+    app.include_router(evidence.router, prefix=settings.api_prefix)
     app.include_router(simulation.router, prefix=settings.api_prefix)
     app.include_router(disaster.router, prefix=settings.api_prefix)
     app.include_router(emergencies.router, prefix=settings.api_prefix)

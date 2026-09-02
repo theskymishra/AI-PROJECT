@@ -11,7 +11,7 @@ import axios from "axios";
 import type { AxiosInstance } from "axios";
 
 import { API_URL, REQUEST_TIMEOUT_MS } from "@/config";
-import type { HealthResponse } from "@/types";
+import type { EvidenceResult, HealthResponse, PlanResult } from "@/types";
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -218,9 +218,18 @@ export async function requestAllocation(
 /* ========================================================================
    Phase 8 -- HTN response planning
    ======================================================================== */
-import type { PlanResult } from "@/types";
+
 
 export async function requestPlanning(): Promise<PlanResult> {
   const { data } = await api.post<PlanResult>("/api/ai/plan");
+  return data;
+}
+
+/* ========================================================================
+   Phase 9 -- Dempster-Shafer evidence fusion
+   ======================================================================== */
+
+export async function requestEvidence(maxSources = 8): Promise<EvidenceResult> {
+  const { data } = await api.post<EvidenceResult>("/api/ai/evidence", { max_sources: maxSources });
   return data;
 }
