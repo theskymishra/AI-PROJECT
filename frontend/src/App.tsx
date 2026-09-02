@@ -13,6 +13,7 @@ import { DisasterMapPage } from "@/pages/DisasterMapPage";
 import { RiskPage } from "@/pages/RiskPage";
 import { ReasoningPage } from "@/pages/ReasoningPage";
 import { ResourcesPage } from "@/pages/ResourcesPage";
+import { PlanningPage } from "@/pages/PlanningPage";
 import { RoutingPage } from "@/pages/RoutingPage";
 
 export function App() {
@@ -25,6 +26,7 @@ export function App() {
         <Route path="risk" element={<RiskPage />} />
         <Route path="reasoning" element={<ReasoningPage />} />
         <Route path="resources" element={<ResourcesPage />} />
+        <Route path="planning" element={<PlanningPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

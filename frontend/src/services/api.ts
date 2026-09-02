@@ -214,3 +214,13 @@ export async function requestAllocation(
   const { data } = await api.post<CSPResult>("/api/ai/allocate", request);
   return data;
 }
+
+/* ========================================================================
+   Phase 8 -- HTN response planning
+   ======================================================================== */
+import type { PlanResult } from "@/types";
+
+export async function requestPlanning(): Promise<PlanResult> {
+  const { data } = await api.post<PlanResult>("/api/ai/plan");
+  return data;
+}
