@@ -654,3 +654,40 @@ export interface EvidenceResult {
   evidence_count: number;
   execution_ms: number;
 }
+
+
+/* ==========================================================================
+   Phase 10 -- HTN plan execution contracts
+   ========================================================================== */
+
+export interface ExecutionSnapshot {
+  stats: Record<string, number>;
+  emergencies: Array<{
+    id: EmergencyId;
+    status: EmergencyStatus;
+    assigned_ambulance?: AmbulanceId | null;
+    assigned_hospital?: HospitalId | null;
+  }>;
+  ambulances: Array<{
+    id: AmbulanceId;
+    status: AmbulanceStatus;
+    assigned_emergency?: EmergencyId | null;
+  }>;
+  hospitals: Array<{
+    id: HospitalId;
+    available_beds: number;
+    total_beds: number;
+  }>;
+}
+
+export interface ExecutionResult {
+  status: string;
+  message: string;
+  plan: PlanAction[];
+  next_action_index: number | null;
+  executed_count: number;
+  total_actions: number;
+  last_action: PlanAction | null;
+  tick: number;
+  snapshot: ExecutionSnapshot;
+}

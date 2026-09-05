@@ -11,7 +11,7 @@ import axios from "axios";
 import type { AxiosInstance } from "axios";
 
 import { API_URL, REQUEST_TIMEOUT_MS } from "@/config";
-import type { EvidenceResult, HealthResponse, PlanResult } from "@/types";
+import type { EvidenceResult, ExecutionResult, HealthResponse, PlanResult } from "@/types";
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -231,5 +231,29 @@ export async function requestPlanning(): Promise<PlanResult> {
 
 export async function requestEvidence(maxSources = 8): Promise<EvidenceResult> {
   const { data } = await api.post<EvidenceResult>("/api/ai/evidence", { max_sources: maxSources });
+  return data;
+}
+
+/* ========================================================================
+   Phase 10 -- HTN plan execution
+   ======================================================================== */
+
+export async function prepareExecution(): Promise<ExecutionResult> {
+  const { data } = await api.post<ExecutionResult>("/api/ai/execution/prepare");
+  return data;
+}
+
+export async function executeNextAction(): Promise<ExecutionResult> {
+  const { data } = await api.post<ExecutionResult>("/api/ai/execution/step");
+  return data;
+}
+
+export async function executeAll(): Promise<ExecutionResult> {
+  const { data } = await api.post<ExecutionResult>("/api/ai/execution/all");
+  return data;
+}
+
+export async function resetExecution(): Promise<ExecutionResult> {
+  const { data } = await api.post<ExecutionResult>("/api/ai/execution/reset");
   return data;
 }
