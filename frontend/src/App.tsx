@@ -16,6 +16,7 @@ import { ResourcesPage } from "@/pages/ResourcesPage";
 import { PlanningPage } from "@/pages/PlanningPage";
 import { EvidencePage } from "@/pages/EvidencePage";
 import { ExecutionPage } from "@/pages/ExecutionPage";
+import { MonitoringPage } from "@/pages/MonitoringPage";
 import { RoutingPage } from "@/pages/RoutingPage";
 
 export function App() {
@@ -31,6 +32,7 @@ export function App() {
         <Route path="planning" element={<PlanningPage />} />
         <Route path="evidence" element={<EvidencePage />} />
         <Route path="execution" element={<ExecutionPage />} />
+        <Route path="monitoring" element={<MonitoringPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

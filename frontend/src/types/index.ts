@@ -691,3 +691,43 @@ export interface ExecutionResult {
   tick: number;
   snapshot: ExecutionSnapshot;
 }
+
+
+/* ==========================================================================
+   Phase 11 -- response monitoring contracts
+   ========================================================================== */
+
+export interface MonitoringItem {
+  emergency_id: EmergencyId;
+  status: string;
+  ambulance_id: AmbulanceId | null;
+  hospital_id: HospitalId | null;
+  severity: string | null;
+  patients: number;
+  route_ready: boolean;
+  attention: string;
+  recommendation: string;
+}
+
+export interface ResourceHealth {
+  ambulances_available: number;
+  ambulances_total: number;
+  beds_available: number;
+  beds_total: number;
+  active_emergencies: number;
+  assigned_emergencies: number;
+}
+
+export interface MonitoringResult {
+  status: string;
+  tick: number;
+  overall: string;
+  summary: string;
+  health: ResourceHealth;
+  items: MonitoringItem[];
+  alerts: string[];
+  recommendations: string[];
+  replanning_required: boolean;
+  plan_length: number;
+  plan_status: string;
+}
