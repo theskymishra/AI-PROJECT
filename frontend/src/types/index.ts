@@ -731,3 +731,38 @@ export interface MonitoringResult {
   plan_length: number;
   plan_status: string;
 }
+
+
+/* ==========================================================================
+   Phase 12 -- decision explainability contracts
+   ========================================================================== */
+
+export interface DecisionStep {
+  component: string;
+  decision: string;
+  rationale: string;
+  evidence: string[];
+}
+
+export interface EmergencyExplanation {
+  emergency_id: EmergencyId;
+  status: string;
+  severity: string | null;
+  patients: number;
+  ambulance_id: AmbulanceId | null;
+  hospital_id: HospitalId | null;
+  decision: string;
+  rationale: string;
+  steps: DecisionStep[];
+}
+
+export interface ExplainabilityResult {
+  status: string;
+  tick: number;
+  summary: string;
+  ai_chain: string[];
+  explanations: EmergencyExplanation[];
+  audit_events: number;
+  plan_status: string;
+  plan_length: number;
+}
