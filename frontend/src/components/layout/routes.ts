@@ -17,7 +17,7 @@
  *   Phase 12 Analytics
  */
 
-import { Activity, BarChart3, Brain, Boxes, BrainCircuit, FlaskConical, GitBranch, LayoutDashboard, Map, PlayCircle, Route, ShieldCheck } from "lucide-react";
+import { Activity, BarChart3, Brain, Boxes, BrainCircuit, FlaskConical, GitBranch, LayoutDashboard, Map, PlayCircle, Route, ShieldCheck, FileCheck2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface AppRoute {
@@ -41,4 +41,5 @@ export const APP_ROUTES: readonly AppRoute[] = [
   { path: "/monitoring", label: "Response Monitoring", icon: ShieldCheck, phase: 11 },
   { path: "/explainability", label: "AI Explainability", icon: BrainCircuit, phase: 12 },
   { path: "/evaluation", label: "Response Evaluation", icon: BarChart3, phase: 13 },
+  { path: "/final-report", label: "Final Report", icon: FileCheck2, phase: 14 },
 ] as const;

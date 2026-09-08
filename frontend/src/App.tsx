@@ -19,6 +19,7 @@ import { ExecutionPage } from "@/pages/ExecutionPage";
 import { MonitoringPage } from "@/pages/MonitoringPage";
 import { ExplainabilityPage } from "@/pages/ExplainabilityPage";
 import { EvaluationPage } from "@/pages/EvaluationPage";
+import { FinalReportPage } from "@/pages/FinalReportPage";
 import { RoutingPage } from "@/pages/RoutingPage";
 
 export function App() {
@@ -37,6 +38,7 @@ export function App() {
         <Route path="monitoring" element={<MonitoringPage />} />
         <Route path="explainability" element={<ExplainabilityPage />} />
         <Route path="evaluation" element={<EvaluationPage />} />
+        <Route path="final-report" element={<FinalReportPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

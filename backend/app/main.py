@@ -20,6 +20,7 @@ from app.api import (
     monitoring,
     explainability,
     evaluation,
+    final_report,
     disaster,
     emergencies,
     health,
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(monitoring.router, prefix=settings.api_prefix)
     app.include_router(explainability.router, prefix=settings.api_prefix)
     app.include_router(evaluation.router, prefix=settings.api_prefix)
+    app.include_router(final_report.router, prefix=settings.api_prefix)
     app.include_router(simulation.router, prefix=settings.api_prefix)
     app.include_router(disaster.router, prefix=settings.api_prefix)
     app.include_router(emergencies.router, prefix=settings.api_prefix)

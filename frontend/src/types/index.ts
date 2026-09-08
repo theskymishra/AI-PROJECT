@@ -779,6 +779,45 @@ export interface EvaluationMetric {
   interpretation: string;
 }
 
+
+
+export interface FinalSubsystem {
+  phase: number;
+  name: string;
+  purpose: string;
+  status: string;
+  evidence: string;
+}
+
+export interface FinalReportResult {
+  status: string;
+  project: string;
+  version: string;
+  phase: number;
+  total_phases: number;
+  tick: number;
+  scenario: string;
+  simulation_status: string;
+  environment_version: number;
+  zones: number;
+  roads: number;
+  hospitals: number;
+  shelters: number;
+  ambulances: number;
+  emergencies: number;
+  sensor_readings: number;
+  timeline_events: number;
+  monitoring_status: string;
+  readiness: string;
+  replanning_required: boolean;
+  explainability_audit_events: number;
+  evaluation_plan_status: string;
+  evaluation_plan_length: number;
+  summary: string;
+  subsystems: FinalSubsystem[];
+  final_checks: string[];
+}
+
 export interface EvaluationResult {
   status: string;
   tick: number;
