@@ -52,7 +52,7 @@ def broadcaster_baseline():
     """Subscriber count before the test, so assertions are deltas."""
     return engine.broadcaster.subscriber_count
 
-
+@pytest.mark.asyncio
 class TestEventSourceCleanup:
     async def test_opening_the_stream_registers_exactly_one_subscriber(
         self, broadcaster_baseline
@@ -168,7 +168,7 @@ class TestEventSourceCleanup:
         await long_lived.aclose()
         assert engine.broadcaster.subscriber_count == broadcaster_baseline
 
-
+@pytest.mark.asyncio
 class TestBroadcasterSymmetry:
     """Cleanup guarantees at the broadcaster level, independent of HTTP."""
 

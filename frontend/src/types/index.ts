@@ -766,3 +766,37 @@ export interface ExplainabilityResult {
   plan_status: string;
   plan_length: number;
 }
+
+
+/* ==========================================================================
+   Phase 13 -- response evaluation contracts
+   ========================================================================== */
+
+export interface EvaluationMetric {
+  name: string;
+  value: number;
+  unit: string;
+  interpretation: string;
+}
+
+export interface EvaluationResult {
+  status: string;
+  tick: number;
+  scenario: string;
+  summary: string;
+  readiness: string;
+  metrics: EvaluationMetric[];
+  recommendations: string[];
+  active_emergencies: number;
+  resolved_emergencies: number;
+  unresolvable_emergencies: number;
+  assigned_emergencies: number;
+  unassigned_emergencies: number;
+  ambulances_available: number;
+  ambulances_total: number;
+  beds_available: number;
+  beds_total: number;
+  audit_events: number;
+  plan_status: string;
+  plan_length: number;
+}

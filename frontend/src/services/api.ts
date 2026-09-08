@@ -11,7 +11,7 @@ import axios from "axios";
 import type { AxiosInstance } from "axios";
 
 import { API_URL, REQUEST_TIMEOUT_MS } from "@/config";
-import type { EvidenceResult, ExecutionResult, ExplainabilityResult, HealthResponse, MonitoringResult, PlanResult } from "@/types";
+import type { EvidenceResult, ExecutionResult, EvaluationResult, ExplainabilityResult, HealthResponse, MonitoringResult, PlanResult } from "@/types";
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -278,5 +278,14 @@ export async function getReplanCheck(): Promise<MonitoringResult> {
 
 export async function getExplainabilityReport(): Promise<ExplainabilityResult> {
   const { data } = await api.get<ExplainabilityResult>("/api/ai/explainability/report");
+  return data;
+}
+
+/* ========================================================================
+   Phase 13 -- response evaluation
+   ======================================================================== */
+
+export async function getEvaluationReport(): Promise<EvaluationResult> {
+  const { data } = await api.get<EvaluationResult>("/api/ai/evaluation/report");
   return data;
 }
